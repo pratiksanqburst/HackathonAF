@@ -363,7 +363,7 @@ export const RiskSlide: React.FC<SlideTemplateProps> = ({ branding, personaData,
       ]
 
   return (
-    <SlideShell branding={branding} customContent={customContent}>
+    <SlideShell branding={branding}>
       <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: branding.primaryColor }}>
         {customTitle || 'Risk Profile & Asset Allocation'}
       </h2>
@@ -382,7 +382,7 @@ export const RiskSlide: React.FC<SlideTemplateProps> = ({ branding, personaData,
               {p?.risk || 'Balanced'} Allocation
             </div>
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', margin: '8px 0 0 0', lineHeight: 1.4 }}>
-              This strategy is structured to prioritize long-term capital efficiency matching the active {p?.risk?.toLowerCase()} risk profile guidelines.
+              {customContent || `This strategy is structured to prioritize long-term capital efficiency matching the active ${p?.risk?.toLowerCase() || 'balanced'} risk profile guidelines.`}
             </p>
           </div>
         </div>
@@ -558,7 +558,7 @@ export const MonteCarloSlide: React.FC<SlideTemplateProps> = ({ branding, person
 export const InsightsSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent }) => {
   const p = personaData.portfolio
   return (
-    <SlideShell branding={branding} customContent={customContent}>
+    <SlideShell branding={branding}>
       <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: branding.primaryColor }}>
         {customTitle || 'AI-Powered Investment Analysis'}
       </h2>
@@ -591,7 +591,7 @@ export const InsightsSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
             margin: 0,
             fontStyle: 'italic',
           }}>
-            {p?.insight || 'Analysis loading...'}
+            {customContent || p?.insight || 'Analysis loading...'}
           </p>
         </div>
       </div>

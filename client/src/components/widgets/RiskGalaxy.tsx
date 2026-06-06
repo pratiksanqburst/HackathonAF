@@ -1,5 +1,5 @@
 import { useAppStore } from '../../store/useAppStore'
-import { Shield, Scale, Zap } from 'lucide-react'
+import { Shield, Scale, Zap, AlertTriangle } from 'lucide-react'
 
 const riskConfig = {
   Low: {
@@ -47,7 +47,7 @@ const riskConfig = {
 }
 
 const RiskGalaxy = () => {
-  const { portfolioData, loading } = useAppStore()
+  const { portfolioData, loading, stressScenario } = useAppStore()
   const risk = portfolioData?.risk ?? 'Medium'
   const cfg = riskConfig[risk]
 
@@ -99,6 +99,28 @@ const RiskGalaxy = () => {
               }} />
             </div>
             <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>{cfg.description}</p>
+            {stressScenario && (
+              <div style={{
+                marginTop: 12,
+                background: stressScenario === 'ai-boom' || stressScenario === 'rebalance' ? 'rgba(52,211,153,0.06)' : 'rgba(244,63,94,0.06)',
+                border: `1px solid ${stressScenario === 'ai-boom' || stressScenario === 'rebalance' ? 'rgba(52,211,153,0.2)' : 'rgba(244,63,94,0.2)'}`,
+                borderRadius: 8, padding: '8px 12px',
+                display: 'flex', alignItems: 'center', gap: 8,
+                animation: 'blink 2s infinite'
+              }}>
+                <AlertTriangle size={14} color={stressScenario === 'ai-boom' || stressScenario === 'rebalance' ? '#34d399' : '#f43f5e'} style={{ flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  color: stressScenario === 'ai-boom' || stressScenario === 'rebalance' ? '#34d399' : '#f43f5e',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                  fontFamily: 'Outfit'
+                }}>
+                  {stressScenario === 'ai-boom' || stressScenario === 'rebalance' ? 'Tactical Optimization Active' : 'Stressed Simulation Loaded'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Allocation breakdown */}

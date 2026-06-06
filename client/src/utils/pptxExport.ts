@@ -1,14 +1,7 @@
 import pptxgen from 'pptxgenjs'
 import { BrandingConfig } from '../components/deck/SlideTemplates'
-import { Persona, PortfolioData, HoldingData, MetricsData, MonteCarloData } from '../store/useAppStore'
+import { Persona, PortfolioData, HoldingData, MetricsData, MonteCarloData, SlideItem } from '../store/useAppStore'
 
-export interface SlideItem {
-  id: string
-  type: 'cover' | 'metrics' | 'holdings' | 'risk' | 'timeline' | 'montecarlo' | 'insights' | 'custom'
-  title?: string
-  content?: string
-  notes?: string
-}
 
 interface ExportData {
   persona: Persona
@@ -67,7 +60,8 @@ export const exportDeckToPPTX = async (
   data: ExportData
 ) => {
   const pptx = new pptxgen()
-  pptx.layout = 'LAYOUT_16x9'
+  pptx.defineLayout({ name: 'CUSTOM_WIDESCREEN', width: 13.33, height: 7.5 })
+  pptx.layout = 'CUSTOM_WIDESCREEN'
 
   // Master Background & Text Colors
   const bgColor = cleanColor(branding.backgroundColor)
@@ -380,7 +374,7 @@ export const exportDeckToPPTX = async (
         })
 
         slide.addText(
-          'This strategic target is structured to optimize capital efficiency. High equities alignment ensures growth captures market run-ups, while balanced debt cushions against drawdown volatility.',
+          slideItem.content || 'This strategic target is structured to optimize capital efficiency. High equities alignment ensures growth captures market run-ups, while balanced debt cushions against drawdown volatility.',
           {
             x: 0.8,
             y: 3.0,
@@ -434,7 +428,6 @@ export const exportDeckToPPTX = async (
           chartColors: [primaryColor, secondaryColor, 'a78bfa', '94a3b8'],
           holeSize: 55,
         })
-        addAdvisorNote(slide, slideItem.content, primaryColor, pptx)
         break
       }
 
@@ -613,7 +606,7 @@ export const exportDeckToPPTX = async (
         })
 
         const p = data.portfolio
-        const insightText = p?.insight || 'No insights compiled yet. Please load dynamic persona data.'
+        const insightText = slideItem.content || p?.insight || 'No insights compiled yet. Please load dynamic persona data.'
 
         // Large quote shape background
         slide.addShape(pptx.ShapeType.roundRect, {
@@ -636,7 +629,7 @@ export const exportDeckToPPTX = async (
           color: primaryColor,
         })
 
-        slide.addText('🧠 EXECUTIVE PORTFOLIO SUMMARY', {
+        slide.addText('EXECUTIVE PORTFOLIO SUMMARY', {
           x: 1.2,
           y: 2.2,
           w: 10.0,
@@ -657,7 +650,6 @@ export const exportDeckToPPTX = async (
           italic: true,
           lineSpacing: 1.4,
         })
-        addAdvisorNote(slide, slideItem.content, primaryColor, pptx)
         break
       }
 

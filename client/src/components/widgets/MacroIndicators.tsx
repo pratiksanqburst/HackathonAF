@@ -49,11 +49,7 @@ const MacroIndicators = () => {
         </span>
       </div>
       
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 16,
-      }}>
+      <div className="grid-4col-auto">
         {items.map((item, i) => {
           const Icon = item.icon
           return (

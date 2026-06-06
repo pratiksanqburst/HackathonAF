@@ -39,7 +39,7 @@ const MarketSectorHeatmap = () => {
       </div>
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, minHeight: 130 }}>
+        <div className="grid-sectors" style={{ minHeight: 130 }}>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="animate-pulse" style={{
               background: 'rgba(15,23,42,0.4)',
@@ -50,7 +50,7 @@ const MarketSectorHeatmap = () => {
           ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div className="grid-sectors">
           {sectors.map((sector) => {
             const isPositive = sector.change >= 0
             const bgColor = isPositive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)'

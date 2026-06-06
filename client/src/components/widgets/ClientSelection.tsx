@@ -42,7 +42,7 @@ const ClientSelection = () => {
       <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', color: '#64748b', textTransform: 'uppercase', marginBottom: 12 }}>
         Select Client Profile
       </p>
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+      <div className="client-selection-row">
         {personas.map((p) => {
           const isActive = selectedPersona === p.id
           return (

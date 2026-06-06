@@ -6,12 +6,7 @@ const MarketIndices = () => {
   if (!indices.length) return null
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(4, 1fr)',
-      gap: 16,
-      marginBottom: 24
-    }}>
+    <div className="grid-4col-auto" style={{ marginBottom: 24 }}>
       {indices.slice(0, 4).map((item, i) => (
         <div key={i} className="glass-card" style={{ padding: '16px 20px', position: 'relative', overflow: 'hidden' }}>
           <div style={{

@@ -19,7 +19,7 @@ const MonteCarloChart = () => {
 
   if (loading || !monteCarlo) {
     return (
-      <div className="glass-card" style={{ padding: '24px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: '#475569', fontSize: 13 }}>Running simulations...</div>
       </div>
     )
@@ -35,7 +35,7 @@ const MonteCarloChart = () => {
   const color = colorMap[selectedPersona] ?? '#38bdf8'
 
   return (
-    <div className="glass-card" style={{ padding: '24px 28px', height: '100%' }}>
+    <div className="glass-card" style={{ padding: '24px 28px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
