@@ -135,7 +135,7 @@ const Dashboard = () => {
           borderTop: '1px solid rgba(99,179,237,0.06)',
           paddingTop: 16,
         }}>
-          AF InsightSphere — AI-Powered Investment Intelligence · Not financial advice
+          Deckora — AI-Powered Deck Storytelling · Not financial advice
         </div>
       </div>
     </div>

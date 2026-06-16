@@ -1,44 +1,73 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
-const { GoogleGenerativeAI } = require('@google/generative-ai')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
 
-// ─── Gemini AI Setup ──────────────────────────────────────────────────────────
-const GEMINI_KEY = process.env.GEMINI_API_KEY
-const geminiEnabled = GEMINI_KEY && GEMINI_KEY !== 'your_gemini_api_key_here'
-let genAI = null
-let geminiModel = null
+// ─── QBurst LLM Gateway Setup (OpenAI-compatible) ────────────────────────────
+const GATEWAY_URL  = process.env.QBURST_GATEWAY_URL || 'https://llmgateway.qburst.build/v1'
+const GATEWAY_KEY  = process.env.QBURST_API_KEY
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 
-if (geminiEnabled) {
-  genAI = new GoogleGenerativeAI(GEMINI_KEY)
-  geminiModel = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.9,
-      maxOutputTokens: 512,
-    },
-    systemInstruction: `You are an elite AI financial advisor copilot built into the AF InsightSphere wealth management platform. 
-You assist financial advisors with portfolio analysis, investment storytelling, and client communications. 
-You speak with confidence and precision. Use data-driven insights. Keep responses concise — max 4-5 sentences or 4 bullet points. 
-Always write in a professional advisory tone. Do NOT use markdown headers or heavy formatting. Use bullet points sparingly.`,
-  })
-  console.log('✅ Gemini AI copilot enabled')
+const gatewayEnabled = GATEWAY_KEY && GATEWAY_KEY.length > 10
+
+if (gatewayEnabled) {
+  console.log(`✅ QBurst LLM Gateway enabled — model: ${GEMINI_MODEL}`)
 } else {
-  console.log('⚠️  Gemini API key not set — copilot running in mock mode. Add GEMINI_API_KEY to server/.env')
+  console.log('⚠️  QBURST_API_KEY not set — copilot running in mock mode.')
 }
 
+const SYSTEM_PROMPT = `You are an elite AI financial advisor copilot built into the "AF Engage" wealth management platform by Alexander Forbes.
+Your goal is to assist financial advisors in compiling, refining, and generating slide decks, advisory commentary, and client risk assessments.
+
+You MUST frame your advice, commentaries, and rebalancing recommendations around the Alexander Forbes Core Product Portfolio and client Life Stages:
+
+1. CLIENT LIFE STAGES:
+- Early Career (Age 22-30): Focus on high-growth compounding and wealth accumulation. Suggest building up a Retirement Annuity (RA), using Unit Trust - Equity under the investment pillar, and getting Income Protection.
+- Mid Career (Age 30-45): Focus on family planning, education targets, and safety. Suggest Unit Trust - Hybrid, and robust Life Insurance (Death Cover) & Disability Insurance.
+- Pre-Retirement (Age 45-60): Focus on capital consolidation and preparing for transition.
+- Retirement (Age 55+): Focus on capital preservation, sustainable drawdowns, estate planning. Suggest Living Annuity (LA) and Guaranteed Annuity for reliable income.
+
+2. CORE PRODUCT PILLARS (always prefer recommending these specific product terms):
+- Retirement Solutions: Retirement Annuity (RA), Living Annuity (LA), Guaranteed Annuity.
+- Investment Management: Unit Trust - Equity, Unit Trust - Debt, Unit Trust - Hybrid.
+- Insurance & Risk Products: Life Insurance (Death Cover), Disability Insurance, Income Protection.
+
+When presenting solutions, connect the client's current asset details or risk factors directly to options in these pillars.
+Keep comments premium, highly professional, direct, and under 4 sentences or 3 bullet points. Do NOT use markdown headers or markdown bold headers.`
+
 async function askGemini(prompt) {
-  if (!geminiModel) return null
+  if (!gatewayEnabled) return null
   try {
-    const result = await geminiModel.generateContent(prompt)
-    return result.response.text().trim()
+    const response = await fetch(`${GATEWAY_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GATEWAY_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GEMINI_MODEL,
+        temperature: 0.7,
+        max_tokens: 512,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user',   content: prompt },
+        ],
+      }),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      console.error(`Gateway error ${response.status}:`, errText)
+      return null
+    }
+
+    const data = await response.json()
+    return data.choices?.[0]?.message?.content?.trim() ?? null
   } catch (err) {
-    console.error('Gemini API error:', err.message)
+    console.error('QBurst Gateway request failed:', err.message)
     return null
   }
 }
@@ -388,7 +417,7 @@ app.get('/api/simulation/montecarlo', (req, res) => {
 
 // POST /api/copilot/generate-commentary  ─── Real Gemini + mock fallback
 app.post('/api/copilot/generate-commentary', async (req, res) => {
-  const { slideType, persona, metrics, holdings, clientName } = req.body
+  const { slideType, persona, metrics, holdings, clientName, customPrompt } = req.body
   const client = clientName || 'Valued Partner'
 
   // ── Build a rich, data-aware prompt ───────────────────────────────────────
@@ -397,7 +426,7 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
     : 'metrics not available'
 
   const holdingsCtx = holdings && holdings.length > 0
-    ? holdings.slice(0, 5).map(h => `${h.symbol} (${h.allocation}%, P&L: ${h.pnlPct}%)`).join(', ')
+    ? holdings.slice(0, 5).map(h => `${h.symbol} (${h.shares} shares @ $${h.price})`).join(', ')
     : 'holdings not available'
 
   const personaCtx = {
@@ -414,7 +443,9 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
     timeline:    `Write 2-3 bullet points on the wealth growth trajectory and compounding strategy for ${client} (${personaCtx}). Reference their long-term timeline.`,
     montecarlo:  `Write 2-3 bullet points interpreting Monte Carlo simulation results for ${client} (${personaCtx}). Key metrics: ${metricsCtx}. Explain probability of goal success clearly.`,
     insights:    `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}). Holdings: ${holdingsCtx}. Metrics: ${metricsCtx}. Focus on actionable next steps.`,
-    custom:      `Write 3 bullet points of general market outlook commentary for a wealth management presentation for ${client}.`,
+    custom:      customPrompt
+      ? `Write 3 concise bullet points for a slide based on this user instruction: "${customPrompt}". Tailor it for the client: ${client} (${personaCtx}). Holdings: ${holdingsCtx}.`
+      : `Write 3 bullet points of general market outlook commentary for a wealth management presentation for ${client}.`,
   }
 
   const prompt = slidePrompts[slideType] || slidePrompts.custom
@@ -426,21 +457,91 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
     return res.json({ draft: aiDraft, source: 'gemini' })
   }
 
-  // Mock fallback (unchanged)
+  // Mock fallback (Alexander Forbes product aligned)
   const mockDrafts = {
-    cover:      `An exclusive wealth strategy update prepared for ${client}, highlighting key performance gains, risk metrics, and future asset allocation goals.`,
+    cover:      `Alexander Forbes - AF Engage Investment Strategy Report prepared for ${client}. Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
     metrics:    metrics
-      ? `Portfolio registered a strong YTD Return of +${metrics.ytdReturn}%, with Alpha of +${metrics.alpha}% outperforming benchmark indices. Risk remains managed with Sharpe Ratio of ${metrics.sharpe}.`
+      ? `The portfolio metrics indicate alignment with targeted returns. Recommend optimizing allocations by adding to our Unit Trust - Equity or Unit Trust - Debt funds depending on current yield targets.`
       : `Portfolio risk-adjusted returns demonstrate sustained outperformance over benchmark models.`,
     holdings:   holdings?.length > 0
-      ? `Maintained strategic overweights in ${holdings.slice(0,3).map(h=>h.symbol).join(', ')}. Current gains reflect timely entry points and solid underlying growth fundamentals.`
+      ? `Key positions represent robust defensive components. Aligning these holdings with a Retirement Annuity (RA) structure yields optimal tax efficiency.`
       : `Current holdings show a well-diversified mix optimised for yield and targeted asset allocation.`,
-    risk:       `Asset weights are aligned with the client's defensive growth goals. Volatility has been systematically hedged through tactical asset allocation adjustments.`,
-    timeline:   `Historical growth trends reflect steady capital appreciation, capturing upside momentum while maintaining adequate cash reserves to deploy during market corrections.`,
-    montecarlo: `Monte Carlo simulations indicate a high probability of success for achieving wealth accumulation goals. We remain on track with current investment patterns.`,
-    insights:   `Key recommendations: Take partial profits on tech overweights to rebalance into defensive equities and short-duration corporate debt.`,
+    risk:       `Volatility has been systematically hedged. Consider wrapping with an Insurance & Risk product such as Income Protection or Disability Insurance to guard the active income path.`,
+    timeline:   `Compounding projections confirm a steady trajectory towards pre-retirement phases. Wealth transition will leverage a Living Annuity (LA) strategy to sustain drawdowns.`,
+    montecarlo: `Monte Carlo outcomes yield high probability of target success. Sustained contributions to the client's Retirement Annuity (RA) remain the recommended pathway.`,
+    insights:   `Strategic advice: 1. Optimize tax efficiency via Retirement Annuity (RA) contributions. 2. Address protection gaps with Life Insurance (Death Cover). 3. Allocate to Unit Trust - Hybrid to capture balanced yield.`,
   }
   res.json({ draft: mockDrafts[slideType] || mockDrafts.insights, source: 'mock' })
+})
+
+// POST /api/copilot/generate-deck ─── Real Gemini + mock bulk generator
+app.post('/api/copilot/generate-deck', async (req, res) => {
+  const { deck = [], persona, metrics, holdings, clientName } = req.body
+  const client = clientName || 'Valued Partner'
+
+  const metricsCtx = metrics
+    ? `Sharpe: ${metrics.sharpe}, Alpha: ${metrics.alpha}%, Beta: ${metrics.beta}, Volatility: ${metrics.volatility}%, Max Drawdown: ${metrics.maxDrawdown}%, YTD Return: ${metrics.ytdReturn}%`
+    : 'metrics not available'
+
+  const holdingsCtx = holdings && holdings.length > 0
+    ? holdings.slice(0, 5).map(h => `${h.symbol} (${h.allocation}%, P&L: ${h.pnlPct}%)`).join(', ')
+    : 'holdings not available'
+
+  const personaCtx = {
+    'young-investor': 'a young aggressive growth investor with high risk tolerance, heavy tech allocation',
+    'family-planner': 'a family planner with balanced 60/40 portfolio saving for college education goals',
+    'retirement-client': 'a retirement-focused client prioritising income, capital preservation, and dividend yield',
+  }[persona] || 'a wealth management client'
+
+  const slidePrompts = {
+    cover:       `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}.`,
+    metrics:     `Write 3 concise bullet points analysing these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Highlight what's strong and flag any risks.`,
+    holdings:    `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for a ${personaCtx}.`,
+    risk:        `Write 2-3 bullet points on risk management strategy for ${client} (${personaCtx}). Metrics: ${metricsCtx}. Explain how the portfolio is positioned defensively.`,
+    timeline:    `Write 2-3 bullet points on the wealth growth trajectory and compounding strategy for ${client} (${personaCtx}). Reference their long-term timeline.`,
+    montecarlo:  `Write 2-3 bullet points interpreting Monte Carlo simulation results for ${client} (${personaCtx}). Key metrics: ${metricsCtx}. Explain probability of goal success clearly.`,
+    insights:    `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}). Holdings: ${holdingsCtx}. Metrics: ${metricsCtx}. Focus on actionable next steps.`,
+    custom:      `Write 3 bullet points of general market outlook commentary for a wealth management presentation for ${client}.`,
+  }
+
+  try {
+    const promises = deck.map(async (slide) => {
+      const prompt = slidePrompts[slide.type] || slidePrompts.custom
+      const aiDraft = await askGemini(prompt)
+      if (aiDraft) {
+        return { id: slide.id, draft: aiDraft }
+      }
+
+      // Mock fallback (Alexander Forbes aligned)
+      const mockDrafts = {
+        cover:      `• Alexander Forbes - AF Engage Investment Strategy Report prepared for ${client}.\n• Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
+        metrics:    metrics
+          ? `• Portfolio registered a YTD Return of +${metrics.ytdReturn}%.\n• Recommend optimizing yield by allocating to our Unit Trust - Equity or Unit Trust - Debt funds.\n• Volatility is managed at ${metrics.volatility}% with a Sharpe ratio of ${metrics.sharpe}.`
+          : `• Portfolio risk-adjusted returns demonstrate sustained outperformance over benchmark models.`,
+        holdings:   holdings?.length > 0
+          ? `• Core growth holdings represent stable performance engines.\n• Wrapping active equity within a Retirement Annuity (RA) structure offers maximum tax efficiency.\n• Holdings align with Alexander Forbes' client risk guidelines.`
+          : `• Current holdings show a well-diversified mix optimised for yield and targeted asset allocation.`,
+        risk:       `• Volatility has been systematically hedged through tactical asset allocation.\n• Suggest wrapping with an Insurance & Risk product such as Income Protection or Disability Insurance to guard client path.\n• Liquid buffers protect principal under correction events.`,
+        timeline:   `• Compounding projections confirm a steady trajectory towards pre-retirement phases.\n• Wealth transition will leverage a Living Annuity (LA) strategy to sustain drawdowns.\n• Projections remain aligned with targeted timeline parameters.`,
+        montecarlo: `• Monte Carlo simulations indicate a high probability of success for achieving retirement targets.\n• Recommend consistent monthly contributions to the client's Retirement Annuity (RA).\n• Strategy remains robust under standard market stress variations.`,
+        insights:   `• Key recommendation: optimize tax efficiency via Retirement Annuity (RA) contributions.\n• Address protection gaps with Life Insurance (Death Cover) and Income Protection.\n• Allocate to Unit Trust - Hybrid to capture balanced yield.`,
+        custom:     `• Position portfolio to align with retirement solutions (RA/LA)\n• Allocate assets strategically to Unit Trust - Equity and Unit Trust - Hybrid\n• Review coverage under Alexander Forbes Insurance & Risk Products`,
+      }
+      return { id: slide.id, draft: mockDrafts[slide.type] || mockDrafts.custom }
+    })
+
+    const results = await Promise.all(promises)
+    const draftsMap = results.reduce((acc, curr) => {
+      acc[curr.id] = curr.draft
+      acc[curr.id] = curr.draft
+      return acc
+    }, {})
+
+    res.json({ drafts: draftsMap })
+  } catch (err) {
+    console.error('Bulk generation error:', err)
+    res.status(500).json({ error: 'Failed to generate slide deck' })
+  }
 })
 
 // POST /api/copilot/chat  ─── Real conversational Gemini chat
@@ -484,6 +585,151 @@ Respond in 2-4 sentences with specific, data-aware financial advice. Be direct a
   })
 })
 
+// POST /api/copilot/stress-appraisal
+app.post('/api/copilot/stress-appraisal', async (req, res) => {
+  const { scenario, persona, holdings, metrics } = req.body
+
+  const holdingsCtx = holdings && holdings.length > 0
+    ? holdings.map(h => `${h.symbol}: ${h.shares} shares @ $${h.price} ($${h.value.toLocaleString()} total)`).join(', ')
+    : 'N/A'
+
+  const metricsCtx = metrics
+    ? `Sharpe: ${metrics.sharpe}, Volatility: ${metrics.volatility}%, Max Drawdown: ${metrics.maxDrawdown}%`
+    : 'N/A'
+
+  const prompt = `You are an expert risk officer advising on a portfolio.
+Client profile: ${persona}
+Active stress scenario: ${scenario}
+Current holdings: ${holdingsCtx}
+Current metrics: ${metricsCtx}
+
+Analyze the direct impact of this stress scenario on the client's specific assets.
+Explain the vulnerabilities clearly.
+Propose 1 or 2 concrete, realistic rebalancing actions they should take immediately to protect or optimize their wealth.
+Keep the advice highly professional, direct, and under 4 sentences. Do not use markdown headers.`
+
+  const aiReply = await askGemini(prompt)
+
+  if (aiReply) {
+    return res.json({ reply: aiReply, source: 'gemini' })
+  }
+
+  res.json({
+    reply: `Under the simulated ${scenario} scenario, high-beta assets face elevated volatility. We recommend reviewing bond positions to shield capital.`,
+    source: 'mock'
+  })
+})
+
+// POST /api/copilot/goal-advisor
+app.post('/api/copilot/goal-advisor', async (req, res) => {
+  const { persona, current, goal, years, planA, planB, hasPlanB } = req.body
+
+  let prompt = `You are a strategic wealth planning advisor.
+Client persona: ${persona}
+Current portfolio value: $${current.toLocaleString()}
+Target wealth goal: $${goal.toLocaleString()}
+Target timeline: ${years} years
+
+Plan A parameters:
+- Projected growth rate: ${planA.growth}% p.a.
+- Monthly contribution: $${planA.contribution}
+- Reached goal? ${planA.reached ? 'Yes' : 'No'} (${planA.finalValue ? '$' + planA.finalValue.toLocaleString() : 'unknown'} projected value)`
+
+  if (hasPlanB) {
+    prompt += `\n\nPlan B parameters:
+- Projected growth rate: ${planB.growth}% p.a.
+- Monthly contribution: $${planB.contribution}
+- Reached goal? ${planB.reached ? 'Yes' : 'No'} (${planB.finalValue ? '$' + planB.finalValue.toLocaleString() : 'unknown'} projected value)`
+  }
+
+  prompt += `\n\nProvide a professional appraisal of the feasibility of these parameters.
+Are the growth rates realistic for this client's risk profile?
+What adjustments in either contributions or timeframe should the advisor recommend?
+Keep your response to 3-4 sentences maximum. Be precise and professional. Do not use markdown headers.`
+
+  const aiReply = await askGemini(prompt)
+
+  if (aiReply) {
+    return res.json({ reply: aiReply, source: 'gemini' })
+  }
+
+  res.json({
+    reply: `Plan A growth rates are within baseline projections. Increasing monthly contributions will significantly accelerate the path to target goal.`,
+    source: 'mock'
+  })
+})
+
+// POST /api/copilot/news-impact
+app.post('/api/copilot/news-impact', async (req, res) => {
+  const { headline, source, category, persona, holdings } = req.body
+
+  const holdingsCtx = holdings && holdings.length > 0
+    ? holdings.map(h => `${h.symbol} (${h.name})`).join(', ')
+    : 'equities'
+
+  const prompt = `You are an institutional financial analyst.
+Client profile: ${persona}
+Client holdings: ${holdingsCtx}
+News Headline: "${headline}" (Source: ${source}, Category: ${category})
+
+Explain how this specific piece of news impacts the client's current portfolio holdings.
+Specify which assets in their list are most exposed (positively or negatively) and why.
+Provide a clear advisory takeaway for the client's advisor.
+Keep the response to 3 sentences max. Do not use markdown headers.`
+
+  const aiReply = await askGemini(prompt)
+
+  if (aiReply) {
+    return res.json({ reply: aiReply, source: 'gemini' })
+  }
+
+  res.json({
+    reply: `The news headline regarding ${headline} points to macro shifts. We monitor the impact on portfolio sectors closely.`,
+    source: 'mock'
+  })
+})
+
+// POST /api/copilot/refine-commentary
+app.post('/api/copilot/refine-commentary', async (req, res) => {
+  const { text, instruction, persona, holdings, metrics } = req.body
+
+  const metricsCtx = metrics
+    ? `Sharpe: ${metrics.sharpe}, Alpha: ${metrics.alpha}%, Volatility: ${metrics.volatility}%`
+    : 'metrics not available'
+
+  const holdingsCtx = holdings && holdings.length > 0
+    ? holdings.slice(0, 3).map(h => h.symbol).join(', ')
+    : 'equities'
+
+  const prompt = `You are a premium wealth strategy presentation editor.
+Client profile: ${persona}
+Current holdings: ${holdingsCtx}
+Current metrics: ${metricsCtx}
+
+You are asked to refine the following slide commentary:
+"${text}"
+
+Refinement instruction: "${instruction}"
+
+Rewrite the commentary carefully to match this instruction exactly.
+If the instruction specifies a tone, change the tone but keep the factual data.
+If the instruction specifies bullet points, format the result as 2 or 3 clean, bulleted lines using '•'.
+Do not write any introductory text, titles, or concluding remarks. Just output the revised text. Keep it professional and under 4 sentences.`
+
+  const aiReply = await askGemini(prompt)
+
+  if (aiReply) {
+    return res.json({ draft: aiReply, source: 'gemini' })
+  }
+
+  res.json({
+    draft: text,
+    source: 'mock'
+  })
+})
+
+
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function timeSince(date) {
   const s = Math.floor((Date.now() - date) / 1000)
@@ -492,5 +738,5 @@ function timeSince(date) {
   return `${Math.floor(s / 86400)}d ago`
 }
 
-app.listen(5000, () => console.log('AF InsightSphere API running on :5000'))
+app.listen(5000, () => console.log('Deckora API running on :5000'))
 

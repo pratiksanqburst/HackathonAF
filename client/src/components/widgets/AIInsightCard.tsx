@@ -101,7 +101,7 @@ const AIInsightCard = () => {
   }
   const color = colorMap[selectedPersona] ?? '#38bdf8'
 
-  const handleSimulate = (scenario: 'tech-selloff' | 'market-crash' | 'ai-boom' | 'rebalance' | 'pitch') => {
+  const handleSimulate = async (scenario: 'tech-selloff' | 'market-crash' | 'ai-boom' | 'rebalance' | 'pitch') => {
     let userText = ''
     if (scenario === 'tech-selloff') userText = 'Simulate 35% Tech Correction Shock'
     else if (scenario === 'market-crash') userText = 'Stress Test: 2008 Financial Crisis'
@@ -109,7 +109,6 @@ const AIInsightCard = () => {
     else if (scenario === 'rebalance') userText = 'Simulate 5% Defensive Rebalance Shift'
     else if (scenario === 'pitch') userText = 'Draft Client Executive Slides Commentary'
 
-    // Prevent double execution during loading
     if (isTyping) return
 
     const userMsg: Message = {
@@ -122,25 +121,17 @@ const AIInsightCard = () => {
     setMessages(prev => [...prev, userMsg])
     setIsTyping(true)
 
-    // Simulate AI computing latency
-    setTimeout(() => {
-      setIsTyping(false)
+    // Trigger state changes first so other cards react instantly
+    if (scenario !== 'pitch') {
+      setStressScenario(scenario)
+    }
+
+    try {
       let aiText = ''
       let newAction = undefined
+      let source: 'gemini' | 'mock' = 'mock'
 
-      if (scenario === 'tech-selloff') {
-        setStressScenario('tech-selloff')
-        aiText = `**Shock loaded: Tech Correction**. I've adjusted all high-growth technology assets (NVDA, META, AMZN, TSLA) down by **-38%**. Overall portfolio valuation drops by **14%**. Sharpe ratio fell to **${(metrics ? metrics.sharpe * 0.65 : 1.07).toFixed(2)}** and Monte Carlo goal probability declined. I recommend shifting tactical weightings into dividend stocks or liquid bonds to cushion further drawdown.`
-      } else if (scenario === 'market-crash') {
-        setStressScenario('market-crash')
-        aiText = `**Shock loaded: Systemic 2008 Crisis**. Equities down **-35%** across the board. Liquid bond shields are cushioning the decline. Maximum drawdown expands and Monte Carlo goal success probability falls to **22%**. Recommend capital preservation measures immediately.`
-      } else if (scenario === 'ai-boom') {
-        setStressScenario('ai-boom')
-        aiText = `**Projection loaded: AI Acceleration Super-Cycle**. High-growth tech equities spiked **+42%**. Broad portfolio gains **+18.5%**. Sharpe Ratio surges to **${(metrics ? metrics.sharpe * 1.42 : 2.34).toFixed(2)}** and Monte Carlo goal probability reaches **${Math.min(99, (monteCarlo ? monteCarlo.probability : 85) + 12)}%**. Client's target timeline has advanced by 2.4 years!`
-      } else if (scenario === 'rebalance') {
-        setStressScenario('rebalance')
-        aiText = `**Tactical Action Executed: 5% Bond Shift**. I've simulated shifting 5% of equities into intermediate Treasury bonds. This optimization reduces broad portfolio beta and successfully lowers annual volatility to **${(metrics ? metrics.volatility * 0.84 : 11.2).toFixed(1)}%**, while raising Sharpe ratio by **14%**.`
-      } else if (scenario === 'pitch') {
+      if (scenario === 'pitch') {
         const pitchText = getPersonaPitch(selectedPersona, portfolioData, metrics, holdings)
         aiText = `**Drafted Presenter Deck Commentary**: \n\n"${pitchText}"\n\nYou can now sync this highly customized commentary directly to the slide presentation deck.`
         
@@ -148,10 +139,9 @@ const AIInsightCard = () => {
           label: 'Sync to Presenter Slides',
           onClick: () => {
             updateSpecificSlideContent('insights', 'content', pitchText)
-            updateSpecificSlideContent('insights', 'title', `${selectedPersona === 'young-investor' ? 'Young Investor' : selectedPersona === 'family-planner' ? 'Family Planner' : 'Retirement Income'} Strategy Commentary`)
+            updateSpecificSlideContent('insights', 'title', `${selectedPersona === 'young-investor' ? 'Young Growth' : selectedPersona === 'family-planner' ? 'Family Planner' : 'Retirement Income'} Strategy Commentary`)
             
             setMessages(prev => {
-              // Mark action completed
               const updated = prev.map(m => m.action?.label === 'Sync to Presenter Slides' ? { ...m, action: { ...m.action, completed: true, label: 'Synced ✓' } } : m)
               return [...updated, {
                 id: Math.random().toString(),
@@ -162,16 +152,40 @@ const AIInsightCard = () => {
             })
           }
         }
+      } else {
+        const res = await fetch('/api/copilot/stress-appraisal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scenario,
+            persona: selectedPersona,
+            holdings,
+            metrics,
+          }),
+        })
+        const data = await res.json()
+        aiText = data.reply
+        source = data.source
       }
 
+      setIsTyping(false)
       setMessages(prev => [...prev, {
         id: Math.random().toString(),
         sender: 'ai',
         text: aiText,
         timestamp: new Date(),
-        action: newAction
+        action: newAction,
+        source
       }])
-    }, 1200)
+    } catch (err) {
+      setIsTyping(false)
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(),
+        sender: 'ai',
+        text: `Error analyzing stress simulation. Please check your backend connection.`,
+        timestamp: new Date(),
+      }])
+    }
   }
 
   const handleSend = async (e: React.FormEvent) => {

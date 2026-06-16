@@ -38,6 +38,8 @@ const GoalSimulator = () => {
   const { portfolioData, selectedPersona } = useAppStore()
   const [compareMode, setCompareMode] = useState(false)
   const [years, setYears] = useState(10)
+  const [advisorFeedback, setAdvisorFeedback] = useState('')
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   // Plan A Parameters
   const [growthRateA, setGrowthRateA] = useState(8)
@@ -282,6 +284,71 @@ const GoalSimulator = () => {
                 </span>
               </div>
             )}
+          </div>
+
+          {/* AI Advisor Panel */}
+          <div style={{
+            background: 'rgba(99, 179, 237, 0.03)',
+            border: '1px solid rgba(99, 179, 237, 0.12)',
+            borderRadius: 12,
+            padding: 16,
+            marginTop: 4,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: themeColor, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={13} /> AI Wealth Blueprint
+              </span>
+              <button
+                onClick={async () => {
+                  setIsAnalyzing(true)
+                  try {
+                    const res = await fetch('/api/copilot/goal-advisor', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        persona: selectedPersona,
+                        current,
+                        goal,
+                        years,
+                        planA: { growth: growthRateA, contribution: contA, reached: reachedA, finalValue: finalValA },
+                        planB: { growth: growthRateB, contribution: contB, reached: reachedB, finalValue: finalValB },
+                        hasPlanB: compareMode
+                      }),
+                    })
+                    const data = await res.json()
+                    setAdvisorFeedback(data.reply)
+                  } catch {
+                    setAdvisorFeedback('Connection failed. Ensure the backend server is running.')
+                  } finally {
+                    setIsAnalyzing(false)
+                  }
+                }}
+                disabled={isAnalyzing}
+                style={{
+                  background: isAnalyzing ? 'rgba(255,255,255,0.05)' : `linear-gradient(135deg, ${themeColor}, #a78bfa)`,
+                  border: 0,
+                  borderRadius: 6,
+                  color: '#000',
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  padding: '5px 12px',
+                  cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {isAnalyzing ? 'Analyzing...' : 'Audit Pathways'}
+              </button>
+            </div>
+
+            <p style={{
+              fontSize: 12,
+              color: '#cbd5e1',
+              lineHeight: 1.5,
+              margin: 0,
+              fontStyle: advisorFeedback ? 'normal' : 'italic',
+            }}>
+              {advisorFeedback || 'Review plan parameters and click Audit to generate AI strategic advisory commentary on plan feasibility.'}
+            </p>
           </div>
 
         </div>

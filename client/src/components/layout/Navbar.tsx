@@ -30,18 +30,21 @@ const Navbar = () => {
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"
-            style={{ filter: 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.4))' }}>
+            style={{ filter: 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.45))' }}>
             <defs>
               <linearGradient id="navLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#38bdf8" />
-                <stop offset="100%" stopColor="#a78bfa" />
+                <stop offset="50%" stopColor="#818cf8" />
+                <stop offset="100%" stopColor="#c084fc" />
               </linearGradient>
             </defs>
-            <circle cx="50" cy="50" r="42" stroke="url(#navLogoGrad)" strokeWidth="3" strokeDasharray="14 8" strokeLinecap="round" />
-            <circle cx="50" cy="50" r="24" fill="url(#navLogoGrad)" fillOpacity="0.18" stroke="url(#navLogoGrad)" strokeWidth="2.5" />
-            <ellipse cx="50" cy="50" rx="26" ry="7" stroke="#38bdf8" strokeWidth="2" transform="rotate(-30 50 50)" />
-            <ellipse cx="50" cy="50" rx="26" ry="7" stroke="#a78bfa" strokeWidth="2" transform="rotate(30 50 50)" />
-            <circle cx="50" cy="50" r="8" fill="url(#navLogoGrad)" />
+            <circle cx="50" cy="50" r="44" stroke="url(#navLogoGrad)" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.6" />
+            <circle cx="50" cy="50" r="38" stroke="url(#navLogoGrad)" strokeWidth="2.5" opacity="0.8" />
+            <circle cx="50" cy="50" r="18" fill="url(#navLogoGrad)" fillOpacity="0.15" stroke="url(#navLogoGrad)" strokeWidth="2" />
+            <path d="M 50 12 A 38 38 0 0 1 88 50 A 38 38 0 0 1 50 88 A 38 38 0 0 1 12 50 A 38 38 0 0 1 50 12 Z" stroke="url(#navLogoGrad)" strokeWidth="1" opacity="0.3" />
+            <line x1="50" y1="12" x2="50" y2="88" stroke="url(#navLogoGrad)" strokeWidth="1.2" strokeDasharray="3 3" opacity="0.5" />
+            <line x1="12" y1="50" x2="88" y2="50" stroke="url(#navLogoGrad)" strokeWidth="1.2" strokeDasharray="3 3" opacity="0.5" />
+            <circle cx="50" cy="50" r="7" fill="url(#navLogoGrad)" />
           </svg>
           <div>
             <h1 style={{
@@ -54,10 +57,10 @@ const Navbar = () => {
               letterSpacing: '-0.03em',
               whiteSpace: 'nowrap',
             }}>
-              AF InsightSphere
+              Deckora
             </h1>
             <p className="navbar-brand-sub" style={{ fontSize: 10, color: '#475569', margin: 0, marginTop: 1, whiteSpace: 'nowrap' }}>
-              Investment Storytelling Experience
+              AI-Powered Deck Storytelling
             </p>
           </div>
         </div>
@@ -140,7 +143,7 @@ const Navbar = () => {
               {user?.avatar ? (
                 <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                user?.name ? user.name.split(' ').map(n => n[0]).join('') : 'AF'
+                user?.name ? user.name.split(' ').map(n => n[0]).join('') : 'IS'
               )}
             </div>
 

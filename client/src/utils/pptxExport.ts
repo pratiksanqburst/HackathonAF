@@ -92,7 +92,7 @@ export const exportDeckToPPTX = async (
     // Header & Footer (Except for cover slide)
     if (slideItem.type !== 'cover') {
       // Top left logo indicator
-      slide.addText('◈ InsightSphere', {
+      slide.addText('◈ Deckora', {
         x: 0.5,
         y: 0.2,
         w: 3.0,
@@ -124,7 +124,7 @@ export const exportDeckToPPTX = async (
       })
 
       // Bottom right system label
-      slide.addText('AF InsightSphere', {
+      slide.addText('Deckora', {
         x: 8.0,
         y: 7.1,
         w: 5.0,
@@ -149,7 +149,7 @@ export const exportDeckToPPTX = async (
         })
 
         // Cover Logo
-        slide.addText('◈ InsightSphere', {
+        slide.addText('◈ Deckora', {
           x: 0.8,
           y: 1.8,
           w: 4.0,
@@ -291,20 +291,17 @@ export const exportDeckToPPTX = async (
         })
 
         const rows = data.holdings
+        const totalValue = rows.reduce((sum, r) => sum + r.value, 0)
         const tableBody = [
           [
             { text: 'Asset', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true } },
-            { text: 'Shares', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
-            { text: 'Avg Cost', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
-            { text: 'Price', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
-            { text: 'Market Value', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
-            { text: 'Total P&L', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
+            { text: 'Weight', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
+            { text: 'Value', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
+            { text: 'Gain/Loss', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
           ],
           ...rows.map((row) => [
             { text: `${row.symbol}\n${row.name}`, options: { fill: { color: '1e293b' }, color: 'ffffff' } },
-            { text: String(row.shares), options: { fill: { color: '1e293b' }, color: 'ffffff', align: 'right' as const } },
-            { text: `$${row.avgCost.toFixed(2)}`, options: { fill: { color: '1e293b' }, color: 'ffffff', align: 'right' as const } },
-            { text: `$${row.price.toFixed(2)}`, options: { fill: { color: '1e293b' }, color: 'ffffff', align: 'right' as const } },
+            { text: `${((row.value / totalValue) * 100).toFixed(1)}%`, options: { fill: { color: '1e293b' }, color: 'ffffff', align: 'right' as const } },
             { text: `$${row.value.toLocaleString()}`, options: { fill: { color: '1e293b' }, color: 'ffffff', align: 'right' as const, bold: true } },
             {
               text: `${row.pnlPct >= 0 ? '+' : ''}${row.pnlPct}%`,
@@ -318,13 +315,34 @@ export const exportDeckToPPTX = async (
           ]),
         ]
 
-        slide.addTable(tableBody, {
+        // Native Doughnut chart on left
+        const dataChartDoughnut = [
+          {
+            name: "Holdings Allocation",
+            labels: rows.map((row) => row.symbol),
+            values: rows.map((row) => row.value),
+          },
+        ]
+        slide.addChart(pptx.ChartType.doughnut, dataChartDoughnut, {
           x: 0.5,
           y: 1.5,
-          w: 12.3,
-          h: 4.8,
+          w: 5.5,
+          h: 4.5,
+          showTitle: false,
+          showLegend: true,
+          legendPos: "b",
+          legendColor: "ffffff",
+          chartColors: ["38bdf8", "a78bfa", "34d399", "fbbf24", "f472b6", "f43f5e", "818cf8"],
+        })
+
+        // Table on right
+        slide.addTable(tableBody, {
+          x: 6.3,
+          y: 1.5,
+          w: 6.5,
+          h: 4.5,
           border: { type: 'solid', color: '334155', pt: 1 },
-          fontSize: 10,
+          fontSize: 8.5,
         })
         addAdvisorNote(slide, slideItem.content, primaryColor, pptx)
         break
@@ -343,91 +361,70 @@ export const exportDeckToPPTX = async (
 
         const p = data.portfolio
         
-        // Narrative Card on the Left
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0.5,
-          y: 1.6,
-          w: 5.5,
-          h: 4.5,
-          fill: { type: 'solid', color: '1e293b' },
-          line: { color: primaryColor, width: 2 },
-        })
-
-        slide.addText('BRANDED RISK LEVEL', {
-          x: 0.8,
-          y: 1.9,
-          w: 4.9,
-          h: 0.3,
-          fontSize: 9,
-          color: '94A3B8',
-          bold: true,
-        })
-
-        slide.addText(`${p?.risk || 'Balanced'} Allocation`, {
-          x: 0.8,
-          y: 2.3,
-          w: 4.9,
-          h: 0.5,
-          fontSize: 22,
-          bold: true,
-          color: 'ffffff',
-        })
-
-        slide.addText(
-          slideItem.content || 'This strategic target is structured to optimize capital efficiency. High equities alignment ensures growth captures market run-ups, while balanced debt cushions against drawdown volatility.',
-          {
-            x: 0.8,
-            y: 3.0,
-            w: 4.9,
-            h: 2.5,
-            fontSize: 11,
-            color: 'cbd5e1',
-            lineSpacing: 1.4,
-          }
-        )
-
-        // Native Doughnut Chart on the Right
+        // Custom allocation details based on persona
         const allocations = data.persona === 'young-investor'
           ? [
-              { name: 'US Equities (Tech focus)', value: 60 },
-              { name: 'Int\'l Equities (Growth)', value: 20 },
-              { name: 'Alternatives / Crypto', value: 15 },
-              { name: 'Cash / Liquid Bonds', value: 5 },
+              { asset: 'US Equities (Tech focus)', pct: 60 },
+              { asset: 'Int\'l Equities (Growth)', pct: 20 },
+              { asset: 'Alternatives / Crypto', pct: 15 },
+              { asset: 'Cash / Liquid Bonds', pct: 5 },
             ]
           : data.persona === 'family-planner'
           ? [
-              { name: 'US Equities (Core & Div)', value: 40 },
-              { name: 'Int\'l Stocks', value: 20 },
-              { name: 'Fixed Income (Bonds)', value: 30 },
-              { name: 'Alternatives (Real Estate)', value: 10 },
+              { asset: 'US Equities (Core & Div)', pct: 40 },
+              { asset: 'Int\'l Stocks', pct: 20 },
+              { asset: 'Fixed Income (Bonds)', pct: 30 },
+              { asset: 'Alternatives (Real Estate)', pct: 10 },
             ]
           : [
-              { name: 'US Defensive Stocks', value: 30 },
-              { name: 'High-Yield Dividend Funds', value: 20 },
-              { name: 'Long-Term Treasury Bonds', value: 40 },
-              { name: 'Cash Reserves', value: 10 },
+              { asset: 'US Defensive Stocks', pct: 30 },
+              { asset: 'High-Yield Dividend Funds', pct: 20 },
+              { asset: 'Long-Term Treasury Bonds', pct: 40 },
+              { asset: 'Cash Reserves', pct: 10 },
             ]
 
-        const chartData = [
-          {
-            name: 'Allocation',
-            labels: allocations.map((a) => a.name),
-            values: allocations.map((a) => a.value),
-          },
-        ]
-
-        slide.addChart(pptx.ChartType.doughnut, chartData, {
-          x: 6.5,
-          y: 1.6,
-          w: 6.3,
-          h: 4.5,
-          showLegend: true,
-          legendPos: 'b',
-          legendColor: 'ffffff',
-          legendFontSize: 9,
-          chartColors: [primaryColor, secondaryColor, 'a78bfa', '94a3b8'],
-          holeSize: 55,
+        // Left Panel Card
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: 0.5,
+          y: 1.8,
+          w: 4.5,
+          h: 4.0,
+          fill: { type: 'solid', color: '1e293b' },
+          line: { color: '334155', width: 1 },
         })
+        slide.addText('BRANDED RISK LEVEL', { x: 0.8, y: 2.1, w: 3.9, h: 0.2, fontSize: 8, color: '94A3B8' })
+        slide.addText(`${p?.risk || 'Balanced'} Allocation`, { x: 0.8, y: 2.4, w: 3.9, h: 0.5, fontSize: 20, bold: true, color: 'ffffff' })
+        slide.addText(
+          slideItem.notes || `This strategy is structured to prioritize long-term capital efficiency matching the active ${p?.risk?.toLowerCase() || 'balanced'} risk profile guidelines.`,
+          { x: 0.8, y: 3.1, w: 3.9, h: 2.3, fontSize: 10, color: 'cbd5e1', lineSpacing: 1.3 }
+        )
+
+        // Right side allocation bars (simulated using shapes/lines in PPTX)
+        slide.addText('STRATEGIC TARGETS', { x: 5.6, y: 1.8, w: 7.2, h: 0.2, fontSize: 9, bold: true, color: '94A3B8' })
+        allocations.forEach((item, idx) => {
+          const yOff = 2.2 + (idx * 0.9)
+          slide.addText(item.asset, { x: 5.6, y: yOff, w: 5.5, h: 0.3, fontSize: 10, color: 'ffffff' })
+          slide.addText(`${item.pct}%`, { x: 11.5, y: yOff, w: 1.0, h: 0.3, fontSize: 10, bold: true, color: primaryColor, align: 'right' as const })
+          
+          // Outer track
+          slide.addShape(pptx.ShapeType.rect, {
+            x: 5.6,
+            y: yOff + 0.35,
+            w: 6.9,
+            h: 0.1,
+            fill: { type: 'solid', color: '334155' },
+          })
+          // Inner bar
+          slide.addShape(pptx.ShapeType.rect, {
+            x: 5.6,
+            y: yOff + 0.35,
+            w: (item.pct / 100) * 6.9,
+            h: 0.1,
+            fill: { type: 'solid', color: primaryColor },
+          })
+        })
+
+        addAdvisorNote(slide, slideItem.content, primaryColor, pptx)
         break
       }
 
@@ -470,31 +467,25 @@ export const exportDeckToPPTX = async (
         slide.addText(`$${p.current.toLocaleString()}`, { x: 0.7, y: 4.5, w: 4.1, h: 0.5, fontSize: 20, bold: true, color: primaryColor })
         slide.addText(`As of ${p.wealthData[p.wealthData.length - 1]?.year || '2025'}`, { x: 0.7, y: 5.1, w: 4.1, h: 0.2, fontSize: 8, color: '64748B' })
 
-        // Right side data table
-        const timelineTableBody = [
-          [
-            { text: 'Year', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true } },
-            { text: 'Value', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
-            { text: 'YoY Growth', options: { fill: { color: '0f172a' }, color: '94A3B8', bold: true, align: 'right' as const } },
-          ],
-          ...p.wealthData.map((row, idx) => {
-            const prev = idx > 0 ? p.wealthData[idx - 1].value : row.value
-            const growth = idx > 0 ? `${((row.value - prev) / prev * 100).toFixed(1)}%` : '-'
-            return [
-              { text: row.year, options: { fill: { color: '1e293b' }, color: 'ffffff' } },
-              { text: `$${row.value.toLocaleString()}`, options: { fill: { color: '1e293b' }, color: 'ffffff', align: 'right' as const, bold: true } },
-              { text: growth, options: { fill: { color: '1e293b' }, color: growth !== '-' ? '34D399' : 'ffffff', align: 'right' as const } },
-            ]
-          }),
+        // Native Area chart on right
+        const dataChartArea = [
+          {
+            name: "Portfolio Value",
+            labels: p.wealthData.map((row) => row.year),
+            values: p.wealthData.map((row) => row.value),
+          },
         ]
-
-        slide.addTable(timelineTableBody, {
+        slide.addChart(pptx.ChartType.area, dataChartArea, {
           x: 5.6,
           y: 1.8,
           w: 7.2,
           h: 4.0,
-          border: { type: 'solid', color: '334155', pt: 1 },
-          fontSize: 10,
+          showTitle: false,
+          showLegend: false,
+          valAxisTitle: "Portfolio Value ($)",
+          valAxisLabelFormatCode: "$#,##0",
+          chartColors: [primaryColor],
+          valGridLine: { color: "334155" },
         })
         addAdvisorNote(slide, slideItem.content, primaryColor, pptx)
         break

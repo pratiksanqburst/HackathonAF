@@ -106,6 +106,9 @@ interface AppState {
   setDeckBuilderStep: (step: 'start' | 'template-selection' | 'client-selection' | 'generating' | 'workspace') => void
   selectedTemplate: string | null
   setSelectedTemplate: (template: string | null) => void
+  templateMode: 'fixed' | 'custom'
+  setTemplateMode: (mode: 'fixed' | 'custom') => void
+  resetDeckForTemplate: (mode: 'fixed' | 'custom') => void
 
   // Presentation slides state
   deck: SlideItem[]
@@ -162,6 +165,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   setDeckBuilderStep: (step) => set({ deckBuilderStep: step }),
   selectedTemplate: null,
   setSelectedTemplate: (template) => set({ selectedTemplate: template }),
+  templateMode: 'fixed',
+  setTemplateMode: (mode) => set({ templateMode: mode }),
+  resetDeckForTemplate: (mode) => {
+    if (mode === 'custom') {
+      const id = Math.random().toString(36).substring(2, 11)
+      set({
+        templateMode: 'custom',
+        deck: [{ id, type: 'cover', notes: 'Welcome the client and set the presentation tone.' }],
+        selectedSlideId: id,
+      })
+    } else {
+      set({
+        templateMode: 'fixed',
+        deck: [
+          { id: '1', type: 'cover', notes: 'Welcome the client and set the presentation tone.' },
+          { id: '2', type: 'metrics', notes: 'Highlight key performance stats and Sharpe ratios.' },
+          { id: '3', type: 'holdings', notes: 'Review specific holdings and active market value.' },
+          { id: '4', type: 'risk', notes: 'Explain how target asset weights align to risk profile.' },
+          { id: '5', type: 'timeline', notes: 'Show compounding portfolio growth.' },
+          { id: '6', type: 'montecarlo', notes: 'Provide probability distribution of retirement goal.' },
+          { id: '7', type: 'insights', notes: 'Review AI-generated suggestions.' }
+        ],
+        selectedSlideId: '1',
+      })
+    }
+  },
 
   deck: [
     { id: '1', type: 'cover', notes: 'Welcome the client and set the presentation tone.' },

@@ -13,106 +13,8 @@ import {
   CustomTextSlide
 } from '../components/deck/SlideTemplates'
 import { exportDeckToPPTX } from '../utils/pptxExport'
-import { ChevronUp, ChevronDown, Trash2, Printer, Download, Play, Pause, X, Sparkles, Library, GitFork, FileOutput } from 'lucide-react'
+import { ChevronUp, ChevronDown, Trash2, Printer, Download, Play, Pause, X, Sparkles, Library, GitFork, FileOutput, Layers } from 'lucide-react'
 
-// ─── Engage Architecture Section ─────────────────────────────────────────────
-const EngageArchitectureSection: React.FC = () => (
-  <div style={{
-    marginTop: 28,
-    background: 'rgba(15,23,42,0.5)',
-    border: '1px solid rgba(99,179,237,0.1)',
-    borderRadius: 20,
-    padding: '28px 28px 32px',
-    backdropFilter: 'blur(20px)',
-  }}>
-    {/* Header */}
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6 }}>
-      <div style={{
-        width: 4, height: 28, borderRadius: 2,
-        background: 'linear-gradient(180deg, #38bdf8, #a78bfa)',
-      }} />
-      <div>
-        <h2 style={{
-          fontSize: 15, fontWeight: 800, margin: 0,
-          letterSpacing: '0.06em', textTransform: 'uppercase',
-          background: 'linear-gradient(90deg, #f1f5f9, #94a3b8)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-          fontFamily: 'Outfit, sans-serif',
-        }}>
-          The Engage Architecture for Track A
-        </h2>
-        <p style={{ fontSize: 11, color: '#475569', margin: '3px 0 0 0' }}>
-          Three integrated pillars that power automated, brand-perfect client presentations.
-        </p>
-      </div>
-    </div>
-
-    {/* Architecture 3-card grid */}
-    <div className="arch-grid">
-      {/* Card 1 – The Library */}
-      <div className="arch-card">
-        <div className="arch-icon-wrap">
-          <Library size={26} color="#38bdf8" strokeWidth={1.8} />
-        </div>
-        <div>
-          <h3 style={{
-            fontSize: 15, fontWeight: 800, color: '#f1f5f9', margin: '0 0 10px 0',
-            fontFamily: 'Outfit, sans-serif',
-          }}>The Library</h3>
-          <p style={{ fontSize: 12.5, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-            A library of{' '}
-            <strong style={{ color: '#f1f5f9' }}>&ldquo;Slide Bricks&rdquo;</strong>
-            {' '}— performance charts, risk heatmaps, and fee tables —
-            pre-approved by the Alex Forbes brand team.
-          </p>
-        </div>
-      </div>
-
-      {/* Card 2 – The Orchestrator */}
-      <div className="arch-card">
-        <div className="arch-icon-wrap" style={{
-          background: 'rgba(167,139,250,0.1)',
-          borderColor: 'rgba(167,139,250,0.2)',
-        }}>
-          <GitFork size={26} color="#a78bfa" strokeWidth={1.8} />
-        </div>
-        <div>
-          <h3 style={{
-            fontSize: 15, fontWeight: 800, color: '#f1f5f9', margin: '0 0 10px 0',
-            fontFamily: 'Outfit, sans-serif',
-          }}>The Orchestrator</h3>
-          <p style={{ fontSize: 12.5, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-            The logic that maps{' '}
-            <strong style={{ color: '#f1f5f9' }}>Client Facts</strong>
-            {' '}to the slide bricks, ensuring the right numbers land on
-            the right charts instantly.
-          </p>
-        </div>
-      </div>
-
-      {/* Card 3 – The Export Engine */}
-      <div className="arch-card">
-        <div className="arch-icon-wrap" style={{
-          background: 'rgba(52,211,153,0.1)',
-          borderColor: 'rgba(52,211,153,0.2)',
-        }}>
-          <FileOutput size={26} color="#34d399" strokeWidth={1.8} />
-        </div>
-        <div>
-          <h3 style={{
-            fontSize: 15, fontWeight: 800, color: '#f1f5f9', margin: '0 0 10px 0',
-            fontFamily: 'Outfit, sans-serif',
-          }}>The Export Engine</h3>
-          <p style={{ fontSize: 12.5, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-            The final &ldquo;Compile&rdquo; step that turns logic into a{' '}
-            <strong style={{ color: '#f1f5f9' }}>Publishable PPTX</strong>,
-            giving Adviser an editable deck ready for her meeting.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-)
 
 const PRESET_THEMES = [
   {
@@ -174,6 +76,7 @@ const DeckBuilder = () => {
 
     // Global Slide deck state and operations
     deck,
+    setDeck,
     selectedSlideId,
     setSelectedSlideId,
     addSlide,
@@ -182,6 +85,7 @@ const DeckBuilder = () => {
     updateSlideNotes,
     updateCustomSlideContent,
     updateSpecificSlideContent,
+    resetDeckForTemplate,
   } = useAppStore()
 
   // Make sure we have data loaded for the selected persona
@@ -195,6 +99,13 @@ const DeckBuilder = () => {
     setPersona(persona)
     setDeckBuilderStep('generating')
     
+    // Initialize slide deck state based on chosen template mode
+    if (selectedTemplate === 'Custom Canvas') {
+      resetDeckForTemplate('custom')
+    } else {
+      resetDeckForTemplate('fixed')
+    }
+    
     // Simulate AI Story Engine analysis
     setTimeout(() => {
       setDeckBuilderStep('workspace')
@@ -202,7 +113,16 @@ const DeckBuilder = () => {
   }
 
   const [isDrafting, setIsDrafting] = useState<boolean>(false)
+  const [isBulkDrafting, setIsBulkDrafting] = useState<boolean>(false)
+  const [isEditingInline, setIsEditingInline] = useState<boolean>(false)
+  const [inlineTitle, setInlineTitle] = useState<string>('')
+  const [inlineContent, setInlineContent] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'content' | 'branding' | 'data'>('content')
+
+  // AI custom prompt and refinement states
+  const [customSlidePrompt, setCustomSlidePrompt] = useState<string>('')
+  const [refineInstruction, setRefineInstruction] = useState<string>('')
+  const [isRefining, setIsRefining] = useState<boolean>(false)
 
   // Presenter Mode states
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
@@ -337,16 +257,98 @@ const DeckBuilder = () => {
           metrics,
           holdings,
           clientName: branding.clientName,
+          customPrompt: selectedSlide.type === 'custom' ? customSlidePrompt : undefined,
         }),
       })
       const data = await response.json()
       if (data && data.draft) {
         updateCustomSlideContent('content', data.draft)
+        if (isEditingInline) {
+          setInlineContent(data.draft)
+        }
       }
     } catch (err) {
       console.error('Failed to generate AI draft', err)
     } finally {
       setIsDrafting(false)
+    }
+  }
+
+  const handleRefineCommentary = async (instruction: string) => {
+    if (!selectedSlide) return
+    setIsRefining(true)
+    try {
+      const response = await fetch('/api/copilot/refine-commentary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: selectedSlide.content || '',
+          instruction,
+          persona: selectedPersona,
+          metrics,
+          holdings,
+        }),
+      })
+      const data = await response.json()
+      if (data && data.draft) {
+        updateCustomSlideContent('content', data.draft)
+        if (isEditingInline) {
+          setInlineContent(data.draft)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refine commentary', err)
+    } finally {
+      setIsRefining(false)
+    }
+  }
+
+  // Sync inline edit state with current slide selection
+  useEffect(() => {
+    if (selectedSlide) {
+      setInlineTitle(selectedSlide.title || '')
+      setInlineContent(selectedSlide.content || '')
+    }
+    setIsEditingInline(false)
+  }, [selectedSlideId])
+
+  const handleSaveInline = () => {
+    updateCustomSlideContent('title', inlineTitle)
+    updateCustomSlideContent('content', inlineContent)
+    setIsEditingInline(false)
+  }
+
+  const handleGenerateAllSlides = async () => {
+    setIsBulkDrafting(true)
+    try {
+      const response = await fetch('/api/copilot/generate-deck', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deck,
+          persona: selectedPersona,
+          metrics,
+          holdings,
+          clientName: branding.clientName,
+        }),
+      })
+      const data = await response.json()
+      if (data && data.drafts) {
+        const updatedDeck = deck.map(slide => {
+          if (data.drafts[slide.id]) {
+            return {
+              ...slide,
+              content: data.drafts[slide.id]
+            }
+          }
+          return slide
+        })
+        setDeck(updatedDeck)
+      }
+    } catch (err) {
+      console.error('Failed to generate bulk drafts', err)
+    } finally {
+      setIsBulkDrafting(false)
     }
   }
 
@@ -480,28 +482,102 @@ const DeckBuilder = () => {
             )}
             
             {deckBuilderStep === 'template-selection' && (
-                <div style={{ padding: '40px 20px', maxWidth: 900, margin: '0 auto' }}>
-                  <h2 style={{ fontSize: 'clamp(18px, 4vw, 24px)', fontWeight: 700, marginBottom: 30, textAlign: 'center', color: '#f8fafc' }}>Choose a Template</h2>
-                  <div className="wizard-template-grid">
-                  {['Retirement Review', 'Portfolio Performance Review', 'Risk Assessment', 'Fee Impact Analysis', 'Wealth Growth Review', 'Sustainability Planning'].map(template => (
+              <div style={{ padding: '40px 20px', maxWidth: 1000, margin: '0 auto' }}>
+                <h2 style={{ fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 800, marginBottom: 8, textAlign: 'center', color: '#f8fafc', letterSpacing: '-0.02em' }}>Choose Your Investment Story Theme</h2>
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14, marginBottom: 40 }}>Select a pre-built structure or start with a custom blank canvas</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 30, alignItems: 'stretch' }}>
+                  {/* Left Column: Custom Blank Canvas */}
+                  <div style={{
+                    background: 'rgba(15, 23, 42, 0.4)',
+                    border: '2px dashed rgba(56, 189, 248, 0.3)',
+                    borderRadius: 16,
+                    padding: 32,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onClick={() => { setSelectedTemplate('Custom Canvas'); setDeckBuilderStep('client-selection'); }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#38bdf8';
+                    e.currentTarget.style.background = 'rgba(56, 189, 248, 0.05)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+                    e.currentTarget.style.background = 'rgba(15, 23, 42, 0.4)';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                  >
+                    <div style={{
+                      width: 60, height: 60, borderRadius: '50%',
+                      background: 'rgba(56, 189, 248, 0.1)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      marginBottom: 20
+                    }}>
+                      <Layers size={28} color="#38bdf8" />
+                    </div>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 10px 0' }}>Custom Blank Canvas</h3>
+                    <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>
+                      Start with a clean slate and build your own deck using the modular Slide Brick library.
+                    </p>
+                  </div>
+
+                  {/* Right Column: Pre-built templates */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <h4 style={{ fontSize: 12, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Pre-Built Templates</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      {['Retirement Review', 'Portfolio Performance Review', 'Risk Assessment', 'Fee Impact Analysis', 'Wealth Growth Review', 'Sustainability Planning'].map(template => (
+                        <button 
+                          key={template}
+                          onClick={() => { setSelectedTemplate(template); setDeckBuilderStep('client-selection'); }}
+                          style={{
+                            padding: '18px 20px',
+                            background: 'rgba(15, 23, 42, 0.6)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            borderRadius: 12,
+                            color: '#cbd5e1',
+                            fontSize: 14,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.background = 'rgba(56,189,248,0.08)'; e.currentTarget.style.color = '#fff'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)'; e.currentTarget.style.color = '#cbd5e1'; }}
+                        >
+                          {template}
+                        </button>
+                      ))}
+                    </div>
                     <button 
-                      key={template}
-                      onClick={() => { setSelectedTemplate(template); setDeckBuilderStep('client-selection'); }}
-                      style={{ padding: '24px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(99, 179, 237, 0.2)', borderRadius: 12, color: 'white', fontSize: 16, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.background = 'rgba(56,189,248,0.1)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(99, 179, 237, 0.2)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)' }}
-                    >
-                      {template}
-                    </button>
-                  ))}
-                  <button 
                       onClick={() => { setSelectedTemplate('AI Generated Deck'); setDeckBuilderStep('client-selection'); }}
-                      style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(167, 139, 250, 0.15))', border: '1px solid #a78bfa', borderRadius: 12, color: '#c084fc', fontSize: 16, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'all 0.2s', gridColumn: '1 / -1' }}
+                      style={{
+                        padding: '18px',
+                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(167, 139, 250, 0.15))',
+                        border: '1px solid #a78bfa',
+                        borderRadius: 12,
+                        color: '#c084fc',
+                        fontSize: 14,
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 10,
+                        transition: 'all 0.2s',
+                      }}
                       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 0 20px rgba(167, 139, 250, 0.3)' }}
                       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none' }}
-                  >
-                    <Sparkles size={20} /> AI Generated Deck
-                  </button>
+                    >
+                      <Sparkles size={16} /> AI Generated Deck
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -551,8 +627,7 @@ const DeckBuilder = () => {
           </div>
         ) : (
           <>
-        {/* Architecture Section */}
-        <EngageArchitectureSection />
+
 
         {/* Workspace Title bar */}
         <div className="deck-titlebar">
@@ -585,6 +660,29 @@ const DeckBuilder = () => {
               }}
             >
               {isGeneratingReport ? 'Generating…' : '1-Click Report'}
+            </button>
+
+            {/* AI GENERATE ALL */}
+            <button
+              onClick={handleGenerateAllSlides}
+              disabled={isBulkDrafting}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: isBulkDrafting ? 'rgba(255,255,255,0.05)' : 'rgba(167, 139, 250, 0.15)',
+                border: '1px solid rgba(167, 139, 250, 0.4)',
+                color: '#d8b4fe',
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '8px 16px',
+                borderRadius: 8,
+                cursor: isBulkDrafting ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Sparkles size={14} style={{ animation: isBulkDrafting ? 'spin 2s linear infinite' : 'none' }} />
+              {isBulkDrafting ? 'Generating all...' : 'AI Generate All'}
             </button>
 
             {/* BRAND COMPARISON TOGGLE */}
@@ -675,7 +773,14 @@ const DeckBuilder = () => {
         </div>
 
         {/* 3-Column Responsive Grid */}
-        <div className="deck-grid" style={{ marginTop: 20 }}>
+        <div 
+          className="deck-grid" 
+          style={{ 
+            marginTop: 20,
+            gridTemplateColumns: showBrandComparison ? '260px 1fr' : '260px 1fr 340px',
+            transition: 'grid-template-columns 0.3s ease'
+          }}
+        >
           {/* COLUMN 1: Slide Manager */}
           <div style={{
             background: 'rgba(15, 23, 42, 0.6)',
@@ -847,9 +952,9 @@ const DeckBuilder = () => {
             {showBrandComparison ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: 4, padding: '2px 8px' }}>Alex Forbes Dark</span>
-                  <span style={{ fontSize: 10, color: '#475569' }}>vs</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#1e3a8a', background: 'rgba(30,58,138,0.08)', border: '1px solid rgba(30,58,138,0.2)', borderRadius: 4, padding: '2px 8px' }}>White Label Corporate</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: 4, padding: '4px 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Default Dark Theme</span>
+                  <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>vs</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 4, padding: '4px 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>White Label Corporate Theme</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div style={{ aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden', border: '2px solid rgba(56,189,248,0.4)', boxShadow: '0 0 20px rgba(56,189,248,0.12)' }}>
@@ -879,24 +984,203 @@ const DeckBuilder = () => {
                 </div>
               </div>
             ) : (
-            /* Single preview */
-            <div style={{
-              width: '100%',
-              aspectRatio: '16/9',
-              background: '#0f172a',
-              borderRadius: 12,
-              border: '1px solid rgba(99, 179, 237, 0.1)',
-              overflow: 'hidden',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
-            }}>
+            /* Single preview with inline editing */
+            <div 
+              style={{
+                width: '100%',
+                aspectRatio: '16/9',
+                background: '#0f172a',
+                borderRadius: 12,
+                border: '1px solid rgba(99, 179, 237, 0.1)',
+                overflow: 'hidden',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
+                position: 'relative',
+                cursor: 'pointer',
+              }}
+              onDoubleClick={() => {
+                if (!isEditingInline && selectedSlide) {
+                  setInlineTitle(selectedSlide.title || '')
+                  setInlineContent(selectedSlide.content || '')
+                  setIsEditingInline(true)
+                }
+              }}
+            >
               {renderSlidePreview(selectedSlide)}
+              
+              {/* Double-click Hint Badge */}
+              {!isEditingInline && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 12,
+                  right: 12,
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: '#38bdf8',
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  opacity: 0.85,
+                }}>
+                  <Layers size={12} /> Double-click slide to edit text inline
+                </div>
+              )}
+
+              {/* Inline Editing Overlay */}
+              {isEditingInline && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(15, 23, 42, 0.92)',
+                  backdropFilter: 'blur(8px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: '24px 32px',
+                  zIndex: 50,
+                  justifyContent: 'center',
+                }}
+                onDoubleClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Layers size={18} color="#38bdf8" />
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>Inline Slide Editor</h3>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setIsDrafting(true)
+                        try {
+                          const response = await fetch('/api/copilot/generate-commentary', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              slideType: selectedSlide.type,
+                              persona: selectedPersona,
+                              metrics,
+                              holdings,
+                              clientName: branding.clientName,
+                              customPrompt: selectedSlide.type === 'custom' ? customSlidePrompt : undefined,
+                            }),
+                          })
+                          const data = await response.json()
+                          if (data && data.draft) {
+                            setInlineContent(data.draft)
+                          }
+                        } catch (err) {
+                          console.error('Failed to generate inline AI draft', err)
+                        } finally {
+                          setIsDrafting(false)
+                        }
+                      }}
+                      disabled={isDrafting}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'rgba(167, 139, 250, 0.15)',
+                        border: '1px solid rgba(167, 139, 250, 0.4)',
+                        color: '#c084fc',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        cursor: isDrafting ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <Sparkles size={12} /> {isDrafting ? 'Drafting...' : 'Draft with AI'}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Slide Title</label>
+                      <input 
+                        type="text"
+                        value={inlineTitle}
+                        onChange={(e) => setInlineTitle(e.target.value)}
+                        style={{
+                          background: 'rgba(2, 6, 23, 0.6)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 8,
+                          padding: '10px 14px',
+                          color: '#fff',
+                          fontSize: 14,
+                          outline: 'none',
+                        }}
+                        placeholder="Enter slide title..."
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minHeight: 0 }}>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Slide Commentary</label>
+                      <textarea
+                        value={inlineContent}
+                        onChange={(e) => setInlineContent(e.target.value)}
+                        style={{
+                          background: 'rgba(2, 6, 23, 0.6)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 8,
+                          padding: '10px 14px',
+                          color: '#fff',
+                          fontSize: 12,
+                          outline: 'none',
+                          resize: 'none',
+                          flex: 1,
+                          lineHeight: 1.5,
+                        }}
+                        placeholder="Enter slide commentary..."
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 16 }}>
+                    <button 
+                      onClick={() => setIsEditingInline(false)}
+                      style={{
+                        padding: '8px 16px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#cbd5e1',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleSaveInline}
+                      style={{
+                        padding: '8px 20px',
+                        background: 'linear-gradient(135deg, #38bdf8, #a78bfa)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             )}
           </div> {/* End Column 2 */}
 
           {/* COLUMN 3: Tabbed Sidebar Inspector */}
           <div style={{
-            display: 'flex', flexDirection: 'column', gap: 16,
+            display: showBrandComparison ? 'none' : 'flex', flexDirection: 'column', gap: 16,
             background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(99, 179, 237, 0.08)',
             borderRadius: 12, padding: '16px 20px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
@@ -957,7 +1241,144 @@ const DeckBuilder = () => {
                         boxSizing: 'border-box', fontFamily: selectedSlide.type === 'custom' ? 'monospace' : 'inherit',
                       }}
                     />
+
+                    {/* AI Slide Refiner Toolkit */}
+                    <div style={{
+                      marginTop: 10,
+                      padding: 12,
+                      background: 'rgba(167, 139, 250, 0.03)',
+                      border: '1px solid rgba(167, 139, 250, 0.1)',
+                      borderRadius: 8,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: '#c084fc', marginBottom: 8 }}>
+                        <Sparkles size={11} /> AI Slide Refiner
+                      </div>
+                      
+                      {/* Presets */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
+                        <button
+                          onClick={() => handleRefineCommentary('Make the tone highly formal and professional for an institutional partner.')}
+                          disabled={isRefining}
+                          style={{
+                            padding: '4px 8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 4, color: '#cbd5e1', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                        >
+                          🗣️ Formal Tone
+                        </button>
+                        <button
+                          onClick={() => handleRefineCommentary('Focus heavily on equity growth, target wealth goals, and positive compounding returns.')}
+                          disabled={isRefining}
+                          style={{
+                            padding: '4px 8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 4, color: '#cbd5e1', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                        >
+                          📈 Growth Pitch
+                        </button>
+                        <button
+                          onClick={() => handleRefineCommentary('Emphasize defensive hedges, risk parameters, low volatility, and wealth preservation.')}
+                          disabled={isRefining}
+                          style={{
+                            padding: '4px 8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 4, color: '#cbd5e1', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                        >
+                          🛡️ Capital Shield
+                        </button>
+                        <button
+                          onClick={() => handleRefineCommentary('Format the content as a neat list of bullet points using Unicode dot marks.')}
+                          disabled={isRefining}
+                          style={{
+                            padding: '4px 8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 4, color: '#cbd5e1', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                        >
+                          🎯 Bullet Points
+                        </button>
+                      </div>
+
+                      {/* Custom Refinement */}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          type="text"
+                          placeholder="Or type prompt e.g. translate to French..."
+                          value={refineInstruction}
+                          onChange={(e) => setRefineInstruction(e.target.value)}
+                          style={{
+                            flex: 1, background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: 4, color: '#fff', padding: '5px 8px', fontSize: 10.5,
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            if (refineInstruction.trim()) {
+                              handleRefineCommentary(refineInstruction)
+                              setRefineInstruction('')
+                            }
+                          }}
+                          disabled={isRefining || !refineInstruction.trim()}
+                          style={{
+                            background: refineInstruction.trim() ? '#a78bfa' : 'rgba(255,255,255,0.05)',
+                            border: 0, borderRadius: 4, color: '#000', fontSize: 10, fontWeight: 700,
+                            padding: '0 10px', cursor: refineInstruction.trim() ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {isRefining ? 'Refining...' : 'Refine'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Gemini Slide Composer for Custom Slides */}
+                  {selectedSlide.type === 'custom' && (
+                    <div style={{
+                      padding: 12,
+                      background: 'rgba(56, 189, 248, 0.03)',
+                      border: '1px solid rgba(56, 189, 248, 0.1)',
+                      borderRadius: 8,
+                    }}>
+                      <label style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+                        ✦ Gemini Custom Slide Composer
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="Tell Gemini what this custom slide should explain (e.g. impact of high interest rates on small caps)..."
+                        value={customSlidePrompt}
+                        onChange={(e) => setCustomSlidePrompt(e.target.value)}
+                        style={{
+                          width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 6, color: '#fff', padding: '6px 8px', fontSize: 11, lineHeight: 1.4,
+                          boxSizing: 'border-box', resize: 'none', marginBottom: 8
+                        }}
+                      />
+                      <button
+                        onClick={handleGenerateAIDraft}
+                        disabled={isDrafting}
+                        style={{
+                          width: '100%',
+                          background: `linear-gradient(135deg, #38bdf8, #a78bfa)`,
+                          border: 0, borderRadius: 6, color: '#000', fontSize: 11, fontWeight: 700,
+                          padding: '6px 0', cursor: isDrafting ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {isDrafting ? 'Drafting Custom Slide...' : 'Generate Custom Slide Content'}
+                      </button>
+                    </div>
+                  )}
                   <div>
                     <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 6 }}>
                       PRESENTER NOTES
@@ -1043,7 +1464,7 @@ const DeckBuilder = () => {
                         borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, cursor: 'pointer', marginBottom: 8,
                       }}
                     >
-                      <option value="standard">Standard — InsightSphere</option>
+                      <option value="standard">Standard — Deckora</option>
                       <option value="premium">Premium White-Label</option>
                       <option value="custom">Custom Logo URL</option>
                     </select>
@@ -1063,18 +1484,88 @@ const DeckBuilder = () => {
                   </div>
 
                   {branding.logoPreset === 'custom' && (
-                    <div>
-                      <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 4 }}>LOGO IMAGE URL</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {/* Drag & Drop / Click upload zone */}
+                      <label
+                        htmlFor="logo-upload"
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          padding: '16px 12px',
+                          background: 'rgba(56, 189, 248, 0.04)',
+                          border: '2px dashed rgba(56, 189, 248, 0.3)',
+                          borderRadius: 10,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.background = 'rgba(56,189,248,0.08)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(56,189,248,0.3)'; e.currentTarget.style.background = 'rgba(56,189,248,0.04)'; }}
+                      >
+                        {branding.logoUrl ? (
+                          <img
+                            src={branding.logoUrl}
+                            alt="Custom logo preview"
+                            style={{ maxHeight: 40, maxWidth: 120, objectFit: 'contain', borderRadius: 4 }}
+                          />
+                        ) : (
+                          <>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(56,189,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Download size={16} color="#38bdf8" />
+                            </div>
+                            <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 600 }}>Click to upload logo</span>
+                            <span style={{ fontSize: 9, color: '#475569' }}>PNG, JPG, SVG · max 2MB</span>
+                          </>
+                        )}
+                        <input
+                          id="logo-upload"
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const reader = new FileReader()
+                            reader.onload = (ev) => {
+                              setBranding({ ...branding, logoUrl: ev.target?.result as string })
+                            }
+                            reader.readAsDataURL(file)
+                          }}
+                        />
+                      </label>
+
+                      {/* Or paste URL */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+                        <span style={{ fontSize: 9, color: '#475569', fontWeight: 600 }}>or paste URL</span>
+                        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+                      </div>
                       <input
                         type="text"
                         placeholder="https://example.com/logo.png"
-                        value={branding.logoUrl || ''}
+                        value={branding.logoUrl && !branding.logoUrl.startsWith('data:') ? branding.logoUrl : ''}
                         onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value })}
                         style={{
                           width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, boxSizing: 'border-box',
+                          borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 11, boxSizing: 'border-box',
                         }}
                       />
+
+                      {/* Clear logo button */}
+                      {branding.logoUrl && (
+                        <button
+                          onClick={() => setBranding({ ...branding, logoUrl: '' })}
+                          style={{
+                            padding: '6px 12px', background: 'rgba(248,113,113,0.1)',
+                            border: '1px solid rgba(248,113,113,0.25)', borderRadius: 6,
+                            color: '#f87171', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                          }}
+                        >
+                          ✕ Remove Logo
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

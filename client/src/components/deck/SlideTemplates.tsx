@@ -1,6 +1,7 @@
 import React from 'react'
 import { Persona, PortfolioData, HoldingData, IndexData, NewsData, MetricsData, MonteCarloData } from '../../store/useAppStore'
 import { Zap, TrendingUp, BarChart3, Activity, LineChart, TrendingDown, Brain, Sparkles, Layers } from 'lucide-react'
+import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
 
 export interface BrandingConfig {
   themeName: string
@@ -31,12 +32,13 @@ interface SlideTemplateProps {
 
 // Helper to get logo icon / image based on preset
 export const SlideLogo: React.FC<{ branding: BrandingConfig }> = ({ branding }) => {
+  // Custom uploaded logo (base64 or URL)
   if (branding.logoPreset === 'custom' && branding.logoUrl) {
-    return <img src={branding.logoUrl} alt="Logo" style={{ height: 28, maxWidth: 120, objectFit: 'contain' }} />
+    return <img src={branding.logoUrl} alt="Logo" style={{ height: 28, maxWidth: 140, objectFit: 'contain' }} />
   }
 
   // Fallback / Preset logos
-  const text = branding.logoPreset === 'premium' ? 'ApexWealth' : 'InsightSphere'
+  const text = branding.logoPreset === 'premium' ? 'ApexWealth' : 'Deckora'
   
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -141,7 +143,7 @@ export const SlideShell: React.FC<{
         color: 'rgba(255, 255, 255, 0.3)',
       }}>
         <span>{branding.footerText || 'Confidential · For internal client use only'}</span>
-        <span>AF InsightSphere Wealth Analytics</span>
+        <span>Deckora Wealth Analytics</span>
       </div>
     </div>
   )
@@ -286,51 +288,88 @@ export const MetricsSlide: React.FC<SlideTemplateProps> = ({ branding, personaDa
 // 3. Holdings Slide
 export const HoldingsSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent }) => {
   const h = personaData.holdings
+  const totalValue = h.reduce((sum, item) => sum + item.value, 0)
+  
+  const chartData = h.map(item => ({
+    name: item.symbol,
+    value: item.value
+  }))
+
+  const COLORS = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#f43f5e', '#818cf8']
+
   return (
     <SlideShell branding={branding} customContent={customContent}>
       <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 12px 0', color: branding.primaryColor }}>
         {customTitle || 'Current Asset Holdings'}
       </h2>
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: 11,
-          textAlign: 'left',
-        }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.15)' }}>
-              <th style={{ padding: '6px 8px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Asset</th>
-              <th style={{ padding: '6px 8px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'right' }}>Shares</th>
-              <th style={{ padding: '6px 8px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'right' }}>Avg Cost</th>
-              <th style={{ padding: '6px 8px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'right' }}>Price</th>
-              <th style={{ padding: '6px 8px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'right' }}>Market Value</th>
-              <th style={{ padding: '6px 8px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'right' }}>Total Gain/Loss</th>
-            </tr>
-          </thead>
-          <tbody>
-            {h.map((row, idx) => (
-              <tr key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                <td style={{ padding: '6px 8px' }}>
-                  <div style={{ fontWeight: 600, color: '#fff' }}>{row.symbol}</div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{row.name}</div>
-                </td>
-                <td style={{ padding: '6px 8px', textAlign: 'right' }}>{row.shares}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'right' }}>${row.avgCost.toFixed(2)}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'right' }}>${row.price.toFixed(2)}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600 }}>${row.value.toLocaleString()}</td>
-                <td style={{
-                  padding: '6px 8px',
-                  textAlign: 'right',
-                  fontWeight: 600,
-                  color: row.pnlPct >= 0 ? '#34d399' : '#f87171'
-                }}>
-                  {row.pnlPct >= 0 ? '+' : ''}{row.pnlPct}%
-                </td>
+      <div style={{ display: 'flex', gap: 20, flex: 1, alignItems: 'center', minHeight: 0 }}>
+        {/* Left Side: Donut Chart */}
+        <div style={{ flex: 1, height: '170px', position: 'relative' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={45}
+                outerRadius={65}
+                paddingAngle={3}
+                dataKey="value"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10 }}
+                itemStyle={{ color: '#fff' }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+            pointerEvents: 'none'
+          }}>
+            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Total Value</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>${totalValue.toLocaleString()}</div>
+          </div>
+        </div>
+
+        {/* Right Side: Compact Legend/Table */}
+        <div style={{ flex: 1.4, overflowY: 'auto', maxHeight: '180px', paddingRight: 4 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10, textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.15)' }}>
+                <th style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Asset</th>
+                <th style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'right' }}>Weight</th>
+                <th style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'right' }}>Value</th>
+                <th style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'right' }}>Gain/Loss</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {h.map((row, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                  <td style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[idx % COLORS.length], flexShrink: 0 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 700, color: '#fff', fontSize: 10 }}>{row.symbol}</span>
+                      <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 90 }}>{row.name}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '4px 6px', textAlign: 'right', color: '#fff' }}>{((row.value / totalValue) * 100).toFixed(1)}%</td>
+                  <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600, color: '#fff' }}>${row.value.toLocaleString()}</td>
+                  <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600, color: row.pnlPct >= 0 ? '#34d399' : '#f87171' }}>
+                    {row.pnlPct >= 0 ? '+' : ''}{row.pnlPct}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </SlideShell>
   )
@@ -417,55 +456,45 @@ export const TimelineSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
       <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 12px 0', color: branding.primaryColor }}>
         {customTitle || 'Historical Wealth Growth'}
       </h2>
-      <div style={{ display: 'flex', gap: 24, flex: 1, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 20, flex: 1, alignItems: 'center', minHeight: 0 }}>
         {/* Statistics list */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '12px 16px' }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>INITIAL PORTFOLIO VALUE</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginTop: 2 }}>
+        <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '10px 14px' }}>
+            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>INITIAL PORTFOLIO VALUE</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginTop: 2 }}>
               ${p.wealthData[0]?.value.toLocaleString() || '0'}
             </div>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>As of {p.wealthData[0]?.year}</div>
+            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>As of {p.wealthData[0]?.year}</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '12px 16px' }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>CURRENT PORTFOLIO VALUE</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: branding.primaryColor, marginTop: 2 }}>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '10px 14px' }}>
+            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>CURRENT PORTFOLIO VALUE</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: branding.primaryColor, marginTop: 2 }}>
               ${p.current.toLocaleString()}
             </div>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>As of {p.wealthData[p.wealthData.length - 1]?.year || '2025'}</div>
+            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>As of {p.wealthData[p.wealthData.length - 1]?.year || '2025'}</div>
           </div>
         </div>
 
-        {/* Growth Table */}
-        <div style={{ flex: 1.5 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10, textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <th style={{ padding: '6px 12px', color: 'rgba(255,255,255,0.4)' }}>Year</th>
-                <th style={{ padding: '6px 12px', color: 'rgba(255,255,255,0.4)', textAlign: 'right' }}>Portfolio Value</th>
-                <th style={{ padding: '6px 12px', color: 'rgba(255,255,255,0.4)', textAlign: 'right' }}>Annual Growth</th>
-              </tr>
-            </thead>
-            <tbody>
-              {p.wealthData.map((row, idx) => {
-                const prev = idx > 0 ? p.wealthData[idx - 1].value : row.value
-                const growth = idx > 0 ? ((row.value - prev) / prev * 100).toFixed(1) : '-'
-                return (
-                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td style={{ padding: '6px 12px', fontWeight: 600 }}>{row.year}</td>
-                    <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 600 }}>${row.value.toLocaleString()}</td>
-                    <td style={{
-                      padding: '6px 12px',
-                      textAlign: 'right',
-                      color: growth !== '-' && Number(growth) >= 0 ? '#34d399' : '#fff'
-                    }}>
-                      {growth !== '-' ? `+${growth}%` : '-'}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        {/* Growth Area Chart */}
+        <div style={{ flex: 1.6, height: '170px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={p.wealthData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="slideTimelineGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={branding.primaryColor} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={branding.primaryColor} stopOpacity={0.0}/>
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="year" stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} />
+              <YAxis stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} tickFormatter={(v) => `$${(v / 1000)}k`} />
+              <Tooltip 
+                contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10 }}
+                itemStyle={{ color: '#fff' }}
+                formatter={(value: any) => [`$${value.toLocaleString()}`, 'Portfolio Value']}
+              />
+              <Area type="monotone" dataKey="value" stroke={branding.primaryColor} strokeWidth={2} fillOpacity={1} fill="url(#slideTimelineGrad)" />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </SlideShell>

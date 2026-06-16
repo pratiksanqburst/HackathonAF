@@ -76,7 +76,7 @@ export const GoogleAuthPopup: React.FC = () => {
               Choose an account
             </h1>
             <p style={{ fontSize: 14, color: '#5f6368', margin: '0 0 24px 0' }}>
-              to continue to <strong style={{ color: '#1a73e8' }}>af-insightsphere.com</strong>
+              to continue to <strong style={{ color: '#1a73e8' }}>insightsphere.com</strong>
             </p>
 
             <div style={{ textAlign: 'left', borderTop: '1px solid #dadce0', margin: '0 -32px' }}>
@@ -120,7 +120,7 @@ export const GoogleAuthPopup: React.FC = () => {
             </div>
 
             <div style={{ marginTop: 24, fontSize: 12, color: '#5f6368', lineHeight: 1.5, textAlign: 'left' }}>
-              To create a fully branded, secure environment, AF InsightSphere supports SSO identity providers. Selection assigns appropriate platform viewing keys.
+              To create a fully branded, secure environment, Deckora supports SSO identity providers. Selection assigns appropriate platform viewing keys.
             </div>
           </>
         ) : (
@@ -235,18 +235,21 @@ const Login = () => {
       }}>
         {/* Header App Logo */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-          <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.4))' }}>
+          <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.45))' }}>
             <defs>
               <linearGradient id="loginLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#38bdf8" />
-                <stop offset="100%" stopColor="#a78bfa" />
+                <stop offset="50%" stopColor="#818cf8" />
+                <stop offset="100%" stopColor="#c084fc" />
               </linearGradient>
             </defs>
-            <circle cx="50" cy="50" r="42" stroke="url(#loginLogoGrad)" strokeWidth="3" strokeDasharray="14 8" strokeLinecap="round" />
-            <circle cx="50" cy="50" r="24" fill="url(#loginLogoGrad)" fillOpacity="0.18" stroke="url(#loginLogoGrad)" strokeWidth="2.5" />
-            <ellipse cx="50" cy="50" rx="26" ry="7" stroke="#38bdf8" strokeWidth="2" transform="rotate(-30 50 50)" />
-            <ellipse cx="50" cy="50" rx="26" ry="7" stroke="#a78bfa" strokeWidth="2" transform="rotate(30 50 50)" />
-            <circle cx="50" cy="50" r="8" fill="url(#loginLogoGrad)" />
+            <circle cx="50" cy="50" r="44" stroke="url(#loginLogoGrad)" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.6" />
+            <circle cx="50" cy="50" r="38" stroke="url(#loginLogoGrad)" strokeWidth="2.5" opacity="0.8" />
+            <circle cx="50" cy="50" r="18" fill="url(#loginLogoGrad)" fillOpacity="0.15" stroke="url(#loginLogoGrad)" strokeWidth="2" />
+            <path d="M 50 12 A 38 38 0 0 1 88 50 A 38 38 0 0 1 50 88 A 38 38 0 0 1 12 50 A 38 38 0 0 1 50 12 Z" stroke="url(#loginLogoGrad)" strokeWidth="1" opacity="0.3" />
+            <line x1="50" y1="12" x2="50" y2="88" stroke="url(#loginLogoGrad)" strokeWidth="1.2" strokeDasharray="3 3" opacity="0.5" />
+            <line x1="12" y1="50" x2="88" y2="50" stroke="url(#loginLogoGrad)" strokeWidth="1.2" strokeDasharray="3 3" opacity="0.5" />
+            <circle cx="50" cy="50" r="7" fill="url(#loginLogoGrad)" />
           </svg>
           <div style={{ textAlign: 'left' }}>
             <h1 style={{
@@ -257,10 +260,10 @@ const Login = () => {
               backgroundClip: 'text',
               letterSpacing: '-0.03em',
             }}>
-              AF InsightSphere
+              Deckora
             </h1>
             <span style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Wealth Analytics Suite
+              Deck Storytelling Suite
             </span>
           </div>
         </div>
