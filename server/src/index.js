@@ -729,6 +729,61 @@ Do not write any introductory text, titles, or concluding remarks. Just output t
 })
 
 
+// POST /api/copilot/generate-theme
+app.post('/api/copilot/generate-theme', async (req, res) => {
+  const { description, clientName, persona } = req.body
+
+  if (!description || !description.trim()) {
+    return res.status(400).json({ error: 'description is required' })
+  }
+
+  const personaCtx = {
+    'young-investor':    'a young, growth-oriented investor',
+    'family-planner':    'a family-focused, balanced investor',
+    'retirement-client': 'a retirement-stage, capital-preservation client',
+  }[persona] || 'a wealth management client'
+
+  const prompt = `You are a professional presentation designer for Alexander Forbes wealth management.
+A financial advisor is building a client-facing investment deck for ${clientName || 'a client'} who is ${personaCtx}.
+
+They described their desired theme as: "${description}"
+
+Generate a complete slide deck color theme based on that description.
+Respond ONLY with a valid JSON object (no markdown, no explanation) in this exact format:
+{
+  "themeName": "<short memorable name, max 3 words>",
+  "backgroundColor": "<dark hex color for slide background>",
+  "textColor": "<hex color for primary text, should contrast well with background>",
+  "primaryColor": "<hex color for highlights, headings, accents>",
+  "secondaryColor": "<hex color for secondary accents, charts>",
+  "fontFamily": "<one of: Outfit, Inter, Playfair Display, Plus Jakarta Sans, Roboto>",
+  "rationale": "<1 sentence explaining why these colors match the description>"
+}`
+
+  const aiReply = await askGemini(prompt)
+
+  if (aiReply) {
+    try {
+      // Strip any accidental markdown code fences
+      const cleaned = aiReply.replace(/```json|```/g, '').trim()
+      const theme = JSON.parse(cleaned)
+      return res.json({ theme, source: 'gemini' })
+    } catch {
+      // If JSON parse fails, return the raw text so frontend can still show something
+      return res.json({ raw: aiReply, source: 'gemini-raw' })
+    }
+  }
+
+  // Fallback — AF brand-aligned default
+  const fallbackThemes = {
+    'young-investor':    { themeName: 'Equity Growth', backgroundColor: '#030d1a', textColor: '#f1f5f9', primaryColor: '#22d3ee', secondaryColor: '#818cf8', fontFamily: 'Outfit', rationale: 'Cool cyan and indigo reflect ambition and tech-forward growth positioning.' },
+    'family-planner':   { themeName: 'Family Trust', backgroundColor: '#0a1628', textColor: '#f8fafc', primaryColor: '#34d399', secondaryColor: '#6ee7b7', fontFamily: 'Plus Jakarta Sans', rationale: 'Green tones evoke stability, growth, and long-term family security.' },
+    'retirement-client':{ themeName: 'Capital Shield', backgroundColor: '#0f1117', textColor: '#f4f4f5', primaryColor: '#d4af37', secondaryColor: '#b45309', fontFamily: 'Playfair Display', rationale: 'Gold and warm tones convey prestige, preservation, and trusted legacy.' },
+  }
+  const fallback = fallbackThemes[persona] || fallbackThemes['retirement-client']
+  res.json({ theme: fallback, source: 'mock' })
+})
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function timeSince(date) {

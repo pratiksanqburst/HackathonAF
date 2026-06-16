@@ -124,6 +124,19 @@ const DeckBuilder = () => {
   const [refineInstruction, setRefineInstruction] = useState<string>('')
   const [isRefining, setIsRefining] = useState<boolean>(false)
 
+  // AI Theme Studio states
+  const [themePrompt, setThemePrompt] = useState<string>('')
+  const [generatedTheme, setGeneratedTheme] = useState<null | {
+    themeName: string
+    backgroundColor: string
+    textColor: string
+    primaryColor: string
+    secondaryColor: string
+    fontFamily: string
+    rationale?: string
+  }>(null)
+  const [isGeneratingTheme, setIsGeneratingTheme] = useState<boolean>(false)
+
   // Presenter Mode states
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
   const [presentationIndex, setPresentationIndex] = useState<number>(0)
@@ -301,6 +314,55 @@ const DeckBuilder = () => {
     } finally {
       setIsRefining(false)
     }
+  }
+
+  const handleGenerateTheme = async () => {
+    if (!themePrompt.trim()) return
+    setIsGeneratingTheme(true)
+    setGeneratedTheme(null)
+    try {
+      const res = await fetch('/api/copilot/generate-theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: themePrompt,
+          clientName: branding.clientName,
+          persona: selectedPersona,
+        }),
+      })
+      const data = await res.json()
+      if (data?.theme) {
+        setGeneratedTheme(data.theme)
+      }
+    } catch (err) {
+      console.error('Theme generation failed', err)
+    } finally {
+      setIsGeneratingTheme(false)
+    }
+  }
+
+  const applyGeneratedTheme = () => {
+    if (!generatedTheme) return
+    setBranding(prev => ({
+      ...prev,
+      themeName: generatedTheme.themeName,
+      backgroundColor: generatedTheme.backgroundColor,
+      textColor: generatedTheme.textColor,
+      primaryColor: generatedTheme.primaryColor,
+      secondaryColor: generatedTheme.secondaryColor,
+      fontFamily: generatedTheme.fontFamily,
+    }))
+    // Apply to all slides too
+    setDeck(deck.map((s: import('../store/useAppStore').SlideItem) => ({
+      ...s,
+      backgroundColor: generatedTheme.backgroundColor,
+      textColor: generatedTheme.textColor,
+      primaryColor: generatedTheme.primaryColor,
+      secondaryColor: generatedTheme.secondaryColor,
+      fontFamily: generatedTheme.fontFamily,
+    })))
+    setGeneratedTheme(null)
+    setThemePrompt('')
   }
 
   // Sync inline edit state with current slide selection
@@ -1401,6 +1463,131 @@ const DeckBuilder = () => {
               {/* BRANDING TAB */}
               {activeTab === 'branding' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeIn 0.3s ease' }}>
+
+                  {/* ✦ AI Theme Studio */}
+                  <div style={{
+                    padding: 14,
+                    background: 'linear-gradient(135deg, rgba(167,139,250,0.06), rgba(56,189,248,0.04))',
+                    border: '1px solid rgba(167,139,250,0.2)',
+                    borderRadius: 10,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                      <Sparkles size={13} color="#a78bfa" />
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#c084fc' }}>AI Theme Studio</span>
+                      <span style={{ fontSize: 9, color: '#475569', marginLeft: 'auto' }}>Describe → Generate → Apply</span>
+                    </div>
+                    <textarea
+                      rows={2}
+                      placeholder={'e.g. "Bold Alexander Forbes red and white, formal serif font for retirement clients"...'}
+                      value={themePrompt}
+                      onChange={(e) => setThemePrompt(e.target.value)}
+                      style={{
+                        width: '100%', background: 'rgba(2,6,23,0.7)', border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 6, color: '#e2e8f0', padding: '7px 10px', fontSize: 11,
+                        lineHeight: 1.4, boxSizing: 'border-box', resize: 'none', marginBottom: 8,
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                    <button
+                      onClick={handleGenerateTheme}
+                      disabled={isGeneratingTheme || !themePrompt.trim()}
+                      style={{
+                        width: '100%',
+                        background: isGeneratingTheme || !themePrompt.trim()
+                          ? 'rgba(255,255,255,0.05)'
+                          : 'linear-gradient(135deg, #a78bfa, #38bdf8)',
+                        border: 0, borderRadius: 6, color: isGeneratingTheme || !themePrompt.trim() ? '#475569' : '#000',
+                        fontSize: 11, fontWeight: 700, padding: '7px 0',
+                        cursor: isGeneratingTheme || !themePrompt.trim() ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <Sparkles size={11} />
+                      {isGeneratingTheme ? 'Generating Theme...' : 'Generate AI Theme'}
+                    </button>
+
+                    {/* Generated Theme Preview */}
+                    {generatedTheme && (
+                      <div style={{
+                        marginTop: 12,
+                        padding: 12,
+                        background: 'rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 8,
+                        animation: 'fadeIn 0.3s ease',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>{generatedTheme.themeName}</span>
+                          <span style={{ fontSize: 9, color: '#38bdf8', fontWeight: 600 }}>✦ AI Generated</span>
+                        </div>
+
+                        {/* Color swatches */}
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                          {[
+                            { color: generatedTheme.backgroundColor, label: 'BG' },
+                            { color: generatedTheme.primaryColor,    label: 'Primary' },
+                            { color: generatedTheme.secondaryColor,  label: 'Accent' },
+                            { color: generatedTheme.textColor,       label: 'Text' },
+                          ].map(({ color, label }) => (
+                            <div key={label} style={{ flex: 1, textAlign: 'center' }}>
+                              <div style={{
+                                height: 28, borderRadius: 5, background: color,
+                                border: '1px solid rgba(255,255,255,0.12)', marginBottom: 3,
+                              }} />
+                              <span style={{ fontSize: 8, color: '#64748b' }}>{label}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Mini slide preview */}
+                        <div style={{
+                          height: 48, borderRadius: 5, marginBottom: 8,
+                          background: generatedTheme.backgroundColor,
+                          border: `1px solid ${generatedTheme.primaryColor}40`,
+                          display: 'flex', alignItems: 'center', padding: '0 10px', gap: 8,
+                          overflow: 'hidden',
+                        }}>
+                          <div style={{ width: 3, height: 28, background: generatedTheme.primaryColor, borderRadius: 2, flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: generatedTheme.textColor, fontFamily: generatedTheme.fontFamily }}>AF Engage · {generatedTheme.themeName}</div>
+                            <div style={{ fontSize: 8, color: generatedTheme.primaryColor, marginTop: 2 }}>Strategy Presentation Preview</div>
+                          </div>
+                        </div>
+
+                        {generatedTheme.rationale && (
+                          <p style={{ fontSize: 9.5, color: '#94a3b8', lineHeight: 1.4, margin: '0 0 10px 0', fontStyle: 'italic' }}>
+                            {generatedTheme.rationale}
+                          </p>
+                        )}
+
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={applyGeneratedTheme}
+                            style={{
+                              flex: 1,
+                              background: `linear-gradient(135deg, ${generatedTheme.primaryColor}, ${generatedTheme.secondaryColor})`,
+                              border: 0, borderRadius: 5, color: '#000', fontSize: 10, fontWeight: 700,
+                              padding: '6px 0', cursor: 'pointer',
+                            }}
+                          >
+                            Apply to Deck
+                          </button>
+                          <button
+                            onClick={() => setGeneratedTheme(null)}
+                            style={{
+                              padding: '6px 10px', background: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5,
+                              color: '#64748b', fontSize: 10, cursor: 'pointer',
+                            }}
+                          >
+                            Discard
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 6 }}>1-CLICK THEMES</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
