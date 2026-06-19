@@ -55,7 +55,7 @@ const RiskGalaxy = () => {
     <div className="glass-card" style={{ padding: '24px 28px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>
             Risk Galaxy
           </h2>
           <p style={{ fontSize: 12, color: '#64748b' }}>Portfolio risk profile & allocation</p>
@@ -86,7 +86,7 @@ const RiskGalaxy = () => {
               <span style={{ fontSize: 11, color: '#64748b' }}>High Risk</span>
             </div>
             <div style={{
-              height: 8, background: 'rgba(99,179,237,0.1)',
+              height: 8, background: '#F1F5F9',
               borderRadius: 4, overflow: 'hidden', position: 'relative',
             }}>
               <div style={{
@@ -131,7 +131,7 @@ const RiskGalaxy = () => {
                   <span style={{ fontSize: 12, color: '#94a3b8' }}>{item.name}</span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: item.color }}>{item.pct}%</span>
                 </div>
-                <div style={{ height: 4, background: 'rgba(99,179,237,0.08)', borderRadius: 2 }}>
+                <div style={{ height: 4, background: '#F1F5F9', borderRadius: 2 }}>
                   <div style={{
                     height: '100%', width: `${item.pct}%`,
                     background: item.color, borderRadius: 2,

@@ -10,7 +10,7 @@ const HoldingsTable = () => {
     <div className="glass-card" style={{ padding: '24px' }}>
       {/* Header row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>
           Portfolio Holdings
         </h2>
         {stressScenario && (
@@ -41,7 +41,7 @@ const HoldingsTable = () => {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(99,179,237,0.1)' }}>
+              <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
                 <th style={{ padding: '12px 8px', fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>ASSET</th>
                 <th style={{ padding: '12px 8px', fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>SHARES</th>
                 <th style={{ padding: '12px 8px', fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>PRICE</th>
@@ -62,19 +62,19 @@ const HoldingsTable = () => {
                   <tr
                     key={i}
                     style={{
-                      borderBottom: '1px solid rgba(99,179,237,0.05)',
+                      borderBottom: '1px solid #F1F5F9',
                       backgroundColor: rowFlash,
                       transition: 'background-color 0.5s ease',
                     }}
                   >
                     {/* Symbol + name */}
                     <td style={{ padding: '12px 8px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{h.symbol}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{h.symbol}</div>
                       <div style={{ fontSize: 11, color: '#64748b' }}>{h.name}</div>
                     </td>
 
                     {/* Shares */}
-                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#cbd5e1' }}>{h.shares}</td>
+                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#334155' }}>{h.shares}</td>
 
                     {/* Price + daily change */}
                     <td style={{ padding: '12px 8px' }}>
@@ -83,7 +83,7 @@ const HoldingsTable = () => {
                         fontWeight: stressScenario ? 700 : 400,
                         color: stressScenario
                           ? (h.change >= 0 ? '#34d399' : '#f43f5e')
-                          : '#cbd5e1',
+                          : '#475569',
                         transition: 'color 0.4s ease',
                       }}>
                         ${h.price.toFixed(2)}
@@ -94,7 +94,7 @@ const HoldingsTable = () => {
                     </td>
 
                     {/* Portfolio value */}
-                    <td style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>
+                    <td style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#0F172A' }}>
                       ${h.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
 

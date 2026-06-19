@@ -38,15 +38,15 @@ const NewsCard = () => {
     <div className="glass-card" style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>
             Market Intelligence
           </h2>
           <p style={{ fontSize: 12, color: '#64748b' }}>Latest news impacting your portfolio</p>
         </div>
         <div style={{
           width: 32, height: 32, borderRadius: 8,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: '#F1F5F9',
+          border: '1px solid #E2E8F0',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#38bdf8',
         }}>
@@ -70,18 +70,18 @@ const NewsCard = () => {
               flexDirection: 'column',
               justifyContent: 'space-between',
               padding: '18px',
-              background: 'rgba(15,23,42,0.4)',
-              border: '1px solid rgba(99,179,237,0.1)',
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
               borderRadius: 12,
               transition: 'all 0.2s ease-in-out',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(99,179,237,0.06)'
-              e.currentTarget.style.borderColor = 'rgba(99,179,237,0.3)'
+              e.currentTarget.style.background = '#F1F5F9'
+              e.currentTarget.style.borderColor = '#CBD5E1'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(15,23,42,0.4)'
-              e.currentTarget.style.borderColor = 'rgba(99,179,237,0.1)'
+              e.currentTarget.style.background = '#F8FAFC'
+              e.currentTarget.style.borderColor = '#E2E8F0'
             }}
             >
               <div>
@@ -100,7 +100,7 @@ const NewsCard = () => {
                   <span style={{ fontSize: 11, color: '#64748b' }}>{item.time}</span>
                 </div>
                 <a href={item.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.5, margin: '0 0 12px 0' }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', lineHeight: 1.5, margin: '0 0 12px 0' }}>
                     {item.title}
                   </h3>
                 </a>
@@ -108,7 +108,7 @@ const NewsCard = () => {
               </div>
 
               {/* AI analysis result / button */}
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
+              <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 12 }}>
                 {analyses[i] ? (
                   <div style={{
                     background: 'rgba(167, 139, 250, 0.04)',
@@ -119,7 +119,7 @@ const NewsCard = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9.5, fontWeight: 700, color: '#a78bfa', marginBottom: 4 }}>
                       <Sparkles size={11} /> PORTFOLIO IMPACT ANALYSIS
                     </div>
-                    <p style={{ fontSize: 11.5, color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
+                    <p style={{ fontSize: 11.5, color: '#334155', lineHeight: 1.5, margin: 0 }}>
                       {analyses[i]}
                     </p>
                   </div>

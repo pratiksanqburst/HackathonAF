@@ -41,10 +41,10 @@ const MacroIndicators = () => {
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <Globe size={18} color="#38bdf8" />
-        <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Global Macroeconomic Indicators
         </h3>
-        <span style={{ fontSize: 10, color: '#64748b', background: 'rgba(255,255,255,0.03)', padding: '2px 8px', borderRadius: 12 }}>
+        <span style={{ fontSize: 10, color: '#64748b', background: '#F1F5F9', padding: '2px 8px', borderRadius: 12 }}>
           Live World Bank API
         </span>
       </div>
@@ -67,7 +67,7 @@ const MacroIndicators = () => {
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 20, fontWeight: 800, color: '#f1f5f9', fontFamily: 'Outfit, sans-serif' }}>
+                <span style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', fontFamily: 'Outfit, sans-serif' }}>
                   {item.value}
                 </span>
                 <span style={{ fontSize: 10, color: '#64748b' }}>

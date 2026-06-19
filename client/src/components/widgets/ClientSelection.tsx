@@ -38,8 +38,8 @@ const ClientSelection = () => {
   }
 
   return (
-    <div style={{ marginTop: 24 }}>
-      <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', color: '#64748b', textTransform: 'uppercase', marginBottom: 12 }}>
+    <div style={{ marginTop: 20, marginBottom: 20 }}>
+      <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', color: '#64748b', textTransform: 'uppercase', marginBottom: 10 }}>
         Select Client Profile
       </p>
       <div className="client-selection-row">
@@ -51,45 +51,47 @@ const ClientSelection = () => {
               id={`persona-${p.id}`}
               onClick={() => handleSelect(p.id)}
               style={{
+                flex: 1,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
-                padding: '14px 20px',
+                gap: 10,
+                padding: '12px 16px',
                 background: isActive
-                  ? `linear-gradient(135deg, ${p.color}22, ${p.color}11)`
-                  : 'rgba(15, 23, 42, 0.6)',
-                border: `1px solid ${isActive ? p.color + '60' : 'rgba(99,179,237,0.12)'}`,
-                borderRadius: 12,
+                  ? `${p.color}15`
+                  : '#FFFFFF',
+                border: `1px solid ${isActive ? p.color : '#E2E8F0'}`,
+                borderRadius: 10,
                 cursor: 'pointer',
                 transition: 'all 0.25s ease',
-                boxShadow: isActive ? `0 0 20px ${p.color}25, 0 4px 20px rgba(0,0,0,0.3)` : '0 2px 10px rgba(0,0,0,0.2)',
-                transform: isActive ? 'translateY(-2px)' : 'none',
-                minWidth: 180,
+                boxShadow: isActive
+                  ? `0 4px 12px ${p.color}20`
+                  : '0 1px 3px rgba(15,23,42,0.05)',
+                minWidth: 160,
               }}
             >
               <div style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: isActive ? `${p.color}25` : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${isActive ? p.color + '40' : 'rgba(255,255,255,0.06)'}`,
+                width: 34, height: 34, borderRadius: 8,
+                background: isActive ? `${p.color}25` : '#F8FAFC',
+                border: `1px solid ${isActive ? p.color + '40' : '#E2E8F0'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: isActive ? p.color : '#94a3b8',
+                color: isActive ? p.color : '#64748B',
                 flexShrink: 0,
               }}>
-                <p.icon size={18} />
+                <p.icon size={16} />
               </div>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: isActive ? p.color : '#e2e8f0', fontFamily: 'Outfit, sans-serif' }}>
+              <div style={{ textAlign: 'left', minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', fontFamily: 'Outfit, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {p.label}
                 </div>
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{p.desc}</div>
+                <div style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>{p.desc}</div>
               </div>
               {isActive && (
                 <div style={{
                   marginLeft: 'auto',
-                  width: 8, height: 8,
+                  width: 7, height: 7,
                   borderRadius: '50%',
                   background: p.color,
-                  boxShadow: `0 0 8px ${p.color}`,
+                  boxShadow: `0 0 6px ${p.color}`,
                   flexShrink: 0,
                 }} />
               )}

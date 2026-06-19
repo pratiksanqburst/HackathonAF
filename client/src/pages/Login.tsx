@@ -235,22 +235,17 @@ const Login = () => {
       }}>
         {/* Header App Logo */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-          <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.45))' }}>
-            <defs>
-              <linearGradient id="loginLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#38bdf8" />
-                <stop offset="50%" stopColor="#818cf8" />
-                <stop offset="100%" stopColor="#c084fc" />
-              </linearGradient>
-            </defs>
-            <circle cx="50" cy="50" r="44" stroke="url(#loginLogoGrad)" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.6" />
-            <circle cx="50" cy="50" r="38" stroke="url(#loginLogoGrad)" strokeWidth="2.5" opacity="0.8" />
-            <circle cx="50" cy="50" r="18" fill="url(#loginLogoGrad)" fillOpacity="0.15" stroke="url(#loginLogoGrad)" strokeWidth="2" />
-            <path d="M 50 12 A 38 38 0 0 1 88 50 A 38 38 0 0 1 50 88 A 38 38 0 0 1 12 50 A 38 38 0 0 1 50 12 Z" stroke="url(#loginLogoGrad)" strokeWidth="1" opacity="0.3" />
-            <line x1="50" y1="12" x2="50" y2="88" stroke="url(#loginLogoGrad)" strokeWidth="1.2" strokeDasharray="3 3" opacity="0.5" />
-            <line x1="12" y1="50" x2="88" y2="50" stroke="url(#loginLogoGrad)" strokeWidth="1.2" strokeDasharray="3 3" opacity="0.5" />
-            <circle cx="50" cy="50" r="7" fill="url(#loginLogoGrad)" />
-          </svg>
+          <img 
+            src="/logo.jpg" 
+            alt="DECORA logo" 
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 8,
+              objectFit: 'contain',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }} 
+          />
           <div style={{ textAlign: 'left' }}>
             <h1 style={{
               fontSize: 20, fontWeight: 800, margin: 0,
@@ -260,10 +255,10 @@ const Login = () => {
               backgroundClip: 'text',
               letterSpacing: '-0.03em',
             }}>
-              Deckora
+              DECORA
             </h1>
             <span style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Deck Storytelling Suite
+              Intelligent presentation workspace
             </span>
           </div>
         </div>

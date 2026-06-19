@@ -62,7 +62,7 @@ const StockAlertRules = () => {
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
         <Bell size={18} style={{ color: '#fbbf24' }} />
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.02em', margin: 0 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', margin: 0 }}>
             Smart Stock Price Alerts
           </h2>
           <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Set threshold notifications on portfolio holdings</p>
@@ -73,8 +73,8 @@ const StockAlertRules = () => {
       <form onSubmit={handleAddRule} style={{
         display: 'flex',
         gap: 10,
-        background: 'rgba(15, 23, 42, 0.4)',
-        border: '1px solid rgba(255, 255, 255, 0.04)',
+        background: '#F8FAFC',
+        border: '1px solid #E2E8F0',
         borderRadius: 10,
         padding: 12,
         marginBottom: 20,
@@ -87,10 +87,10 @@ const StockAlertRules = () => {
             onChange={(e) => setSymbol(e.target.value)}
             style={{
               width: '100%',
-              background: '#020617',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
               borderRadius: 6,
-              color: '#fff',
+              color: '#0F172A',
               padding: '6px 8px',
               fontSize: 12,
               cursor: 'pointer',
@@ -109,10 +109,10 @@ const StockAlertRules = () => {
             onChange={(e) => setCondition(e.target.value as any)}
             style={{
               width: '100%',
-              background: '#020617',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
               borderRadius: 6,
-              color: '#fff',
+              color: '#0F172A',
               padding: '6px 8px',
               fontSize: 12,
               cursor: 'pointer',
@@ -133,10 +133,10 @@ const StockAlertRules = () => {
             onChange={(e) => setTargetPrice(e.target.value)}
             style={{
               width: '100%',
-              background: '#020617',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
               borderRadius: 6,
-              color: '#fff',
+              color: '#0F172A',
               padding: '6px 8px',
               fontSize: 12,
               boxSizing: 'border-box',
@@ -186,8 +186,8 @@ const StockAlertRules = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  background: isTriggered ? 'rgba(239, 68, 68, 0.05)' : 'rgba(15, 23, 42, 0.2)',
-                  border: isTriggered ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(255, 255, 255, 0.04)',
+                  background: isTriggered ? 'rgba(239, 68, 68, 0.05)' : '#F8FAFC',
+                  border: isTriggered ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid #E2E8F0',
                   borderRadius: 10,
                   padding: '12px 16px',
                   transition: 'all 0.2s',
@@ -196,14 +196,14 @@ const StockAlertRules = () => {
                 {/* Symbol & Condition */}
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                   <div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{rule.symbol}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{rule.symbol}</span>
                     <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
                       Alert when {rule.condition === 'Above' ? 'Exceeds' : 'Drops Below'} <span style={{ color: '#fbbf24', fontWeight: 600 }}>${rule.targetPrice.toFixed(2)}</span>
                     </div>
                   </div>
                   <div>
                     <span style={{ fontSize: 10, color: '#475569', display: 'block' }}>Current Price</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>${currentPrice ? currentPrice.toFixed(2) : '-'}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0F172A' }}>${currentPrice ? currentPrice.toFixed(2) : '-'}</span>
                   </div>
                 </div>
 
@@ -234,8 +234,8 @@ const StockAlertRules = () => {
                   <button
                     onClick={() => handleToggleActive(rule.id)}
                     style={{
-                      background: rule.isActive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
-                      border: rule.isActive ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255,255,255,0.1)',
+                      background: rule.isActive ? 'rgba(56, 189, 248, 0.2)' : '#F1F5F9',
+                      border: rule.isActive ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid #E2E8F0',
                       borderRadius: 4,
                       color: rule.isActive ? '#38bdf8' : '#64748b',
                       fontSize: 9,

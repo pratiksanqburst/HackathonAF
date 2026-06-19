@@ -82,20 +82,20 @@ const GoalSimulator = () => {
       {/* Header with selector */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.02em', marginBottom: 4 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', marginBottom: 4 }}>
             Strategic Goal Simulator
           </h2>
           <p style={{ fontSize: 12, color: '#64748b' }}>Simulate and compare wealth pathways to target goals</p>
         </div>
 
         {/* Plan Mode Selector */}
-        <div style={{ display: 'flex', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 3 }}>
+        <div style={{ display: 'flex', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 8, padding: 3 }}>
           <button
             onClick={() => setCompareMode(false)}
             style={{
               background: !compareMode ? themeColor : 'transparent',
               border: 0, borderRadius: 6,
-              color: !compareMode ? '#000' : '#94a3b8',
+              color: !compareMode ? '#000' : '#64748b',
               fontSize: 11, fontWeight: 700,
               padding: '6px 12px', cursor: 'pointer',
               transition: 'all 0.2s',
@@ -108,7 +108,7 @@ const GoalSimulator = () => {
             style={{
               background: compareMode ? themeColor : 'transparent',
               border: 0, borderRadius: 6,
-              color: compareMode ? '#000' : '#94a3b8',
+              color: compareMode ? '#000' : '#64748b',
               fontSize: 11, fontWeight: 700,
               padding: '6px 12px', cursor: 'pointer',
               transition: 'all 0.2s',
@@ -126,8 +126,8 @@ const GoalSimulator = () => {
           
           {/* Plan A Parameters */}
           <div style={{
-            background: 'rgba(15,23,42,0.4)',
-            border: '1px solid rgba(255,255,255,0.03)',
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
             borderRadius: 12, padding: 16,
           }}>
             <h3 style={{ fontSize: 12, fontWeight: 700, color: themeColor, margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -139,13 +139,13 @@ const GoalSimulator = () => {
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: '#94a3b8' }}>Annual Growth Rate</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{growthRateA}% p.a.</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>{growthRateA}% p.a.</span>
               </div>
               <input
                 type="range"
                 min={1} max={20} value={growthRateA}
                 onChange={(e) => setGrowthRateA(Number(e.target.value))}
-                style={{ width: '100%', height: 4, appearance: 'none', background: 'rgba(255,255,255,0.1)', borderRadius: 2, outline: 'none' }}
+                style={{ width: '100%', height: 4, appearance: 'none', background: '#E2E8F0', borderRadius: 2, outline: 'none' }}
               />
             </div>
 
@@ -153,13 +153,13 @@ const GoalSimulator = () => {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: '#94a3b8' }}>Monthly Contribution</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>${contA.toLocaleString()}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>${contA.toLocaleString()}</span>
               </div>
               <input
                 type="range"
                 min={0} max={5000} step={100} value={contA}
                 onChange={(e) => setContA(Number(e.target.value))}
-                style={{ width: '100%', height: 4, appearance: 'none', background: 'rgba(255,255,255,0.1)', borderRadius: 2, outline: 'none' }}
+                style={{ width: '100%', height: 4, appearance: 'none', background: '#E2E8F0', borderRadius: 2, outline: 'none' }}
               />
             </div>
           </div>
@@ -167,8 +167,8 @@ const GoalSimulator = () => {
           {/* Plan B Parameters (Comparison) */}
           {compareMode && (
             <div style={{
-              background: 'rgba(15,23,42,0.4)',
-              border: '1px solid rgba(255,255,255,0.03)',
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
               borderRadius: 12, padding: 16,
             }}>
               <h3 style={{ fontSize: 12, fontWeight: 700, color: '#f472b6', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -180,13 +180,13 @@ const GoalSimulator = () => {
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>Annual Growth Rate</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{growthRateB}% p.a.</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>{growthRateB}% p.a.</span>
                 </div>
                 <input
                   type="range"
                   min={1} max={20} value={growthRateB}
                   onChange={(e) => setGrowthRateB(Number(e.target.value))}
-                  style={{ width: '100%', height: 4, appearance: 'none', background: 'rgba(255,255,255,0.1)', borderRadius: 2, outline: 'none' }}
+                  style={{ width: '100%', height: 4, appearance: 'none', background: '#E2E8F0', borderRadius: 2, outline: 'none' }}
                 />
               </div>
 
@@ -194,13 +194,13 @@ const GoalSimulator = () => {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>Monthly Contribution</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>${contB.toLocaleString()}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>${contB.toLocaleString()}</span>
                 </div>
                 <input
                   type="range"
                   min={0} max={5000} step={100} value={contB}
                   onChange={(e) => setContB(Number(e.target.value))}
-                  style={{ width: '100%', height: 4, appearance: 'none', background: 'rgba(255,255,255,0.1)', borderRadius: 2, outline: 'none' }}
+                  style={{ width: '100%', height: 4, appearance: 'none', background: '#E2E8F0', borderRadius: 2, outline: 'none' }}
                 />
               </div>
             </div>
@@ -208,8 +208,8 @@ const GoalSimulator = () => {
 
           {/* Shared Time Horizon */}
           <div style={{
-            background: 'rgba(15,23,42,0.2)',
-            border: '1px solid rgba(255,255,255,0.02)',
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
             borderRadius: 12, padding: '12px 16px',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -220,7 +220,7 @@ const GoalSimulator = () => {
               type="range"
               min={1} max={30} value={years}
               onChange={(e) => setYears(Number(e.target.value))}
-              style={{ width: '100%', height: 4, appearance: 'none', background: 'rgba(255,255,255,0.1)', borderRadius: 2, outline: 'none' }}
+              style={{ width: '100%', height: 4, appearance: 'none', background: '#E2E8F0', borderRadius: 2, outline: 'none' }}
             />
           </div>
         </div>
@@ -232,11 +232,11 @@ const GoalSimulator = () => {
           <div style={{ height: compareMode ? 200 : 160, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,232,240,0.8)" vertical={false} />
                 <XAxis dataKey="year" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={(v) => formatValue(v)} tick={{ fill: '#475569', fontSize: 9 }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
+                  contentStyle={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8 }}
                   labelStyle={{ color: '#64748b', fontSize: 10 }}
                   itemStyle={{ fontSize: 11 }}
                 />
@@ -253,7 +253,7 @@ const GoalSimulator = () => {
           <div style={{ display: 'grid', gridTemplateColumns: compareMode ? '1fr 1fr' : '1fr', gap: 12 }}>
             {/* Plan A Outputs */}
             <div style={{
-              background: 'rgba(15,23,42,0.4)',
+              background: '#F8FAFC',
               border: reachedA ? '1px solid rgba(52,211,153,0.15)' : '1px solid rgba(251,191,36,0.15)',
               borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 4,
             }}>
@@ -270,7 +270,7 @@ const GoalSimulator = () => {
             {/* Plan B Outputs */}
             {compareMode && (
               <div style={{
-                background: 'rgba(15,23,42,0.4)',
+                background: '#F8FAFC',
                 border: reachedB ? '1px solid rgba(52,211,153,0.15)' : '1px solid rgba(251,191,36,0.15)',
                 borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 4,
               }}>
@@ -342,7 +342,7 @@ const GoalSimulator = () => {
 
             <p style={{
               fontSize: 12,
-              color: '#cbd5e1',
+              color: '#334155',
               lineHeight: 1.5,
               margin: 0,
               fontStyle: advisorFeedback ? 'normal' : 'italic',

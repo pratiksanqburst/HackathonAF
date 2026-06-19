@@ -81,6 +81,67 @@ export interface SlideItem {
   notes?: string
 }
 
+export interface PortfolioHolding {
+  symbol: string
+  name: string
+  shares: number
+  avgCost: number
+  value: number
+  allocation: number
+  pnlPct: number
+  assetClass: string
+}
+
+export interface Client {
+  id: string
+  name: string
+  email: string
+  contact: string
+  address: string
+  company: string
+  age: number
+  persona: Persona
+  current: number
+  goal: number
+  sharpe: number
+  volatility: number
+  logo: string | null
+  portfolioHoldings: PortfolioHolding[] | null
+  isImported?: boolean
+  createdAt?: string
+}
+
+export type AppPage = 'home' | 'clients' | 'deck-builder' | 'analytics' | 'templates' | 'activity'
+
+export interface RecentDeck {
+  id: string
+  name: string
+  client: string
+  type: string
+  status: 'Completed' | 'In Review' | 'Draft'
+  modified: string
+}
+
+export interface UpcomingReview {
+  id: string
+  initials: string
+  name: string
+  type: string
+  date: string
+  time: string
+  color: string
+}
+
+export interface ActivityLog {
+  id: string
+  type: string
+  title: string
+  description: string
+  user: string
+  timestamp: string
+  metadata?: any
+}
+
 interface AppState {
   selectedPersona: Persona
   portfolioData: PortfolioData | null
@@ -91,7 +152,11 @@ interface AppState {
   monteCarlo: MonteCarloData | null
   macro: MacroData | null
   loading: boolean
-  currentView: 'dashboard' | 'deck-builder'
+  currentView: 'dashboard' | 'deck-builder'   // legacy — keep for backward compat
+  currentPage: AppPage
+  setCurrentPage: (page: AppPage) => void
+  recentDecks: RecentDeck[]
+  upcomingReviews: UpcomingReview[]
   
   // Base states for stress recovery
   basePortfolioData: PortfolioData | null
@@ -102,8 +167,8 @@ interface AppState {
   setStressScenario: (scenario: 'tech-selloff' | 'market-crash' | 'ai-boom' | 'rebalance' | null) => void
 
   // Deck Builder Wizard states
-  deckBuilderStep: 'start' | 'template-selection' | 'client-selection' | 'generating' | 'workspace'
-  setDeckBuilderStep: (step: 'start' | 'template-selection' | 'client-selection' | 'generating' | 'workspace') => void
+  deckBuilderStep: 'start' | 'creation-mode' | 'template-selection' | 'template-config' | 'client-selection' | 'generating' | 'workspace'
+  setDeckBuilderStep: (step: 'start' | 'creation-mode' | 'template-selection' | 'template-config' | 'client-selection' | 'generating' | 'workspace') => void
   selectedTemplate: string | null
   setSelectedTemplate: (template: string | null) => void
   templateMode: 'fixed' | 'custom'
@@ -127,9 +192,31 @@ interface AppState {
   login: (user: User) => void
   logout: () => void
   
-  setView: (view: 'dashboard' | 'deck-builder') => void
+  setView: (view: 'dashboard' | 'deck-builder') => void  // legacy compat
   setPersona: (persona: Persona) => void
   fetchDashboardData: (persona: Persona) => Promise<void>
+
+  // Client Management
+  clients: Client[]
+  selectedClient: Client | null
+  clientsLoading: boolean
+  clientsError: string | null
+  setClients: (clients: Client[]) => void
+  selectClient: (client: Client | null) => void
+  importClientsFromCSV: (csvText: string) => void
+  fetchClients: () => Promise<void>
+  addClient: (data: Partial<Client>) => Promise<Client>
+  updateClient: (id: string, data: Partial<Client>) => Promise<Client>
+  deleteClient: (id: string) => Promise<void>
+  uploadClientLogo: (id: string, file: File) => Promise<string>
+  uploadClientPortfolio: (id: string, file: File) => Promise<PortfolioHolding[]>
+
+  // Activity Logging
+  activities: ActivityLog[]
+  activitiesLoading: boolean
+  activitiesError: string | null
+  fetchActivities: () => Promise<void>
+  logActivity: (type: string, title: string, description: string, metadata?: any) => Promise<void>
 }
 
 const getStoredUser = (): User | null => {
@@ -139,6 +226,14 @@ const getStoredUser = (): User | null => {
   } catch {
     return null
   }
+}
+
+const getInitialPage = (): AppPage => {
+  if (typeof window === 'undefined') return 'home'
+  const hash = window.location.hash || '#home'
+  const pagePart = hash.split('?')[0].replace('#', '')
+  const validPages: AppPage[] = ['home', 'clients', 'deck-builder', 'analytics', 'templates', 'activity']
+  return validPages.includes(pagePart as AppPage) ? (pagePart as AppPage) : 'home'
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -152,6 +247,216 @@ export const useAppStore = create<AppState>((set, get) => ({
   macro: null,
   loading: false,
   currentView: 'dashboard',
+  currentPage: getInitialPage(),
+  setCurrentPage: (page) => {
+    // Sync with hash
+    if (page === 'clients') {
+      const selected = get().selectedClient
+      if (selected) {
+        window.location.hash = `clients?id=${selected.id}`
+      } else {
+        window.location.hash = 'clients'
+      }
+    } else {
+      window.location.hash = page
+    }
+    set({ currentPage: page })
+  },
+  recentDecks: [
+    { id: 'rd-1', name: 'Q1 2026 Portfolio Review', client: 'Margaret Chen', type: 'Quarterly Review', status: 'Completed', modified: '2h ago' },
+    { id: 'rd-2', name: 'Risk Assessment — Meridian Growth', client: 'Robert Harrington', type: 'Risk Assessment', status: 'In Review', modified: 'Yesterday' },
+    { id: 'rd-3', name: 'Retirement Planning Strategy', client: 'Patricia Sullivan', type: 'Retirement', status: 'Draft', modified: '3 days ago' },
+    { id: 'rd-4', name: 'Investment Recommendations 2026', client: 'James Okonkwo', type: 'Investment', status: 'Completed', modified: '1 week ago' },
+    { id: 'rd-5', name: 'Portfolio Performance — Q1', client: 'Sarah Kowalski', type: 'Performance', status: 'Completed', modified: '2 weeks ago' }
+  ],
+  upcomingReviews: [
+    { id: 'ur-1', initials: 'MC', name: 'Margaret Chen', type: 'Quarterly Strategy', date: 'Jun 12', time: '10:00 AM', color: '#2563EB' },
+    { id: 'ur-2', initials: 'RH', name: 'Robert Harrington', type: 'Portfolio Review', date: 'Jun 14', time: '2:30 PM', color: '#2563EB' },
+    { id: 'ur-3', initials: 'PS', name: 'Patricia Sullivan', type: 'Onboarding Meeting', date: 'Jun 17', time: '11:00 AM', color: '#2563EB' },
+    { id: 'ur-4', initials: 'JO', name: 'James Okonkwo', type: 'Annual Review', date: 'Jun 19', time: '3:00 PM', color: '#2563EB' }
+  ],
+
+  // Client Management Defaults
+  clients: [],
+  clientsLoading: false,
+  clientsError: null,
+  selectedClient: null,
+  setClients: (clients) => set({ clients }),
+  selectClient: (client) => {
+    set({ selectedClient: client })
+    if (client) {
+      get().setPersona(client.persona)
+      if (get().currentPage === 'clients') {
+        window.location.hash = `clients?id=${client.id}`
+      }
+    } else {
+      if (get().currentPage === 'clients' && window.location.hash.includes('?id=')) {
+        window.location.hash = 'clients'
+      }
+    }
+  },
+
+  fetchClients: async () => {
+    set({ clientsLoading: true, clientsError: null })
+    try {
+      const res = await fetch('/api/clients')
+      if (!res.ok) throw new Error('Failed to fetch clients')
+      const data = await res.json()
+      set({ clients: data, clientsLoading: false })
+    } catch (err: any) {
+      set({ clientsLoading: false, clientsError: err.message })
+    }
+  },
+
+  // Activity Logging Defaults
+  activities: [],
+  activitiesLoading: false,
+  activitiesError: null,
+  fetchActivities: async () => {
+    set({ activitiesLoading: true, activitiesError: null })
+    try {
+      const res = await fetch('/api/activity')
+      if (!res.ok) throw new Error('Failed to fetch activity logs')
+      const data = await res.json()
+      set({ activities: data, activitiesLoading: false })
+    } catch (err: any) {
+      set({ activitiesLoading: false, activitiesError: err.message })
+    }
+  },
+  logActivity: async (type, title, description, metadata = {}) => {
+    try {
+      const res = await fetch('/api/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, title, description, metadata }),
+      })
+      if (!res.ok) throw new Error('Failed to log activity')
+      const newAct = await res.json()
+      set(state => ({ activities: [newAct, ...state.activities] }))
+    } catch (err: any) {
+      console.error('Failed to log activity:', err.message)
+    }
+  },
+
+  addClient: async (data) => {
+    const res = await fetch('/api/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Failed to create client')
+    }
+    const newClient = await res.json()
+    set(state => ({ clients: [...state.clients, newClient] }))
+    return newClient
+  },
+
+  updateClient: async (id, data) => {
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Failed to update client')
+    }
+    const updated = await res.json()
+    set(state => ({ clients: state.clients.map(c => c.id === id ? updated : c) }))
+    return updated
+  },
+
+  deleteClient: async (id) => {
+    const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Failed to delete client')
+    }
+    set(state => ({ clients: state.clients.filter(c => c.id !== id) }))
+  },
+
+  uploadClientLogo: async (id, file) => {
+    const form = new FormData()
+    form.append('logo', file)
+    const res = await fetch(`/api/clients/${id}/logo`, { method: 'POST', body: form })
+    if (!res.ok) throw new Error('Logo upload failed')
+    const { logoUrl, client: updated } = await res.json()
+    set(state => ({ clients: state.clients.map(c => c.id === id ? updated : c) }))
+    return logoUrl
+  },
+
+  uploadClientPortfolio: async (id, file) => {
+    const form = new FormData()
+    form.append('portfolio', file)
+    const res = await fetch(`/api/clients/${id}/portfolio`, { method: 'POST', body: form })
+    if (!res.ok) throw new Error('Portfolio upload failed')
+    const { holdings, client: updated } = await res.json()
+    set(state => ({ clients: state.clients.map(c => c.id === id ? updated : c) }))
+    return holdings
+  },
+
+  importClientsFromCSV: (csvText) => {
+    const lines = csvText.split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length <= 1) return
+    
+    const headers = lines[0].toLowerCase().split(',').map(h => h.trim())
+    const nameIdx = headers.indexOf('name')
+    const ageIdx = headers.indexOf('age')
+    const personaIdx = headers.indexOf('persona')
+    const currentIdx = headers.findIndex(h => h.includes('current') || h.includes('portfolio') || h.includes('assets'))
+    const goalIdx = headers.indexOf('goal')
+    const sharpeIdx = headers.indexOf('sharpe')
+    const volatilityIdx = headers.indexOf('volatility')
+    
+    const parsedClients: Client[] = []
+    
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',').map(p => p.trim())
+      if (parts.length < 3) continue
+      
+      const name = nameIdx !== -1 ? parts[nameIdx] : `Client #${i}`
+      const age = ageIdx !== -1 ? parseInt(parts[ageIdx], 10) || 40 : 40
+      
+      let rawPersona = personaIdx !== -1 ? parts[personaIdx].toLowerCase() : 'family-planner'
+      let persona: Persona = 'family-planner'
+      if (rawPersona.includes('young') || rawPersona.includes('growth') || rawPersona.includes('aggressive') || rawPersona.includes('early')) {
+        persona = 'young-investor'
+      } else if (rawPersona.includes('retire') || rawPersona.includes('conservative') || rawPersona.includes('late')) {
+        persona = 'retirement-client'
+      }
+      
+      const currentVal = currentIdx !== -1 ? parseFloat(parts[currentIdx].replace(/[^0-9.]/g, '')) || 250000 : 250000
+      const goalVal = goalIdx !== -1 ? parseFloat(parts[goalIdx].replace(/[^0-9.]/g, '')) || 500000 : 500000
+      const sharpeVal = sharpeIdx !== -1 ? parseFloat(parts[sharpeIdx]) || 1.4 : 1.4
+      const volatilityVal = volatilityIdx !== -1 ? parseFloat(parts[volatilityIdx]) || 12.0 : 12.0
+      
+      parsedClients.push({
+        id: `imported-${Date.now()}-${i}`,
+        name,
+        email: '',
+        contact: '',
+        address: '',
+        company: '',
+        age,
+        persona,
+        current: currentVal,
+        goal: goalVal,
+        sharpe: sharpeVal,
+        volatility: volatilityVal,
+        logo: null,
+        portfolioHoldings: null,
+        isImported: true
+      })
+    }
+    
+    if (parsedClients.length > 0) {
+      set(state => ({
+        clients: [...state.clients, ...parsedClients]
+      }))
+    }
+  },
 
   // Stress state default
   basePortfolioData: null,
@@ -483,8 +788,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   fetchDashboardData: async (persona) => {
     set({ loading: true })
+    const client = get().selectedClient
+    const mcQuery = client
+      ? `&current=${client.current}&goal=${client.goal}&volatility=${client.volatility}&ytdReturn=${client.persona === 'young-investor' ? 31.7 : client.persona === 'family-planner' ? 14.3 : 6.2}`
+      : ''
     try {
-      const [
+      let [
         portfolioRes,
         indicesRes,
         holdingsRes,
@@ -498,9 +807,30 @@ export const useAppStore = create<AppState>((set, get) => ({
         fetch(`/api/portfolio/holdings/${persona}`).then(r => r.json()),
         fetch('/api/market/news').then(r => r.json()),
         fetch(`/api/portfolio/metrics/${persona}`).then(r => r.json()),
-        fetch(`/api/simulation/montecarlo?persona=${persona}`).then(r => r.json()),
+        fetch(`/api/simulation/montecarlo?persona=${persona}${mcQuery}`).then(r => r.json()),
         fetch('/api/market/macro').then(r => r.json()).catch(() => ({ gdp: 2.89, inflation: 4.12, unemployment: 3.64, fedRate: 5.33 }))
       ])
+
+      if (client && client.persona === persona) {
+        portfolioRes.current = client.current
+        portfolioRes.goal = client.goal
+        metricsRes.volatility = client.volatility
+        metricsRes.sharpe = client.sharpe
+        portfolioRes.insight = `Alexander Forbes Engage client profile loaded: ${client.name}. Current Assets: $${client.current.toLocaleString()}, Target Goal: $${client.goal.toLocaleString()} (${client.persona === 'retirement-client' ? 'Retirement Solutions' : client.persona === 'family-planner' ? 'Education/Family Goal' : 'Compounding Accumulation'}).`
+        
+        if (client.portfolioHoldings && client.portfolioHoldings.length > 0) {
+          holdingsRes = client.portfolioHoldings.map((h: any) => ({
+            symbol: h.symbol,
+            name: h.name,
+            shares: h.shares,
+            avgCost: h.avgCost,
+            price: h.price || h.avgCost * (1 + (h.pnlPct || 0) / 100),
+            value: h.value || (h.shares * (h.price || h.avgCost * (1 + (h.pnlPct || 0) / 100))),
+            pnlPct: h.pnlPct || 0,
+            change: h.change || 0
+          }))
+        }
+      }
 
       set({
         portfolioData: portfolioRes,
@@ -515,7 +845,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         baseMonteCarlo: monteCarloRes,
         macro: macroRes,
         loading: false,
-        stressScenario: null // reset stress when fetching new persona data
+        stressScenario: null
       })
     } catch (err) {
       console.error('Failed to fetch dashboard data', err)

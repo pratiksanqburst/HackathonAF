@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import Navbar from '../components/layout/Navbar'
 import { useAppStore, SlideItem } from '../store/useAppStore'
 import {
   BrandingConfig,
@@ -13,52 +12,75 @@ import {
   CustomTextSlide
 } from '../components/deck/SlideTemplates'
 import { exportDeckToPPTX } from '../utils/pptxExport'
-import { ChevronUp, ChevronDown, Trash2, Printer, Download, Play, Pause, X, Sparkles, Library, GitFork, FileOutput, Layers } from 'lucide-react'
+import { ChevronUp, ChevronDown, Trash2, Printer, Download, Upload, UserPlus, Play, Pause, X, Sparkles, Library, GitFork, FileOutput, Layers } from 'lucide-react'
 
 
 const PRESET_THEMES = [
   {
-    themeName: 'Midnight Blue (Default)',
-    backgroundColor: '#0b1329',
+    themeName: 'Quarterly Review (Blue)',
+    backgroundColor: '#1e40af',
     textColor: '#ffffff',
     primaryColor: '#38bdf8',
-    secondaryColor: '#a78bfa',
+    secondaryColor: '#60a5fa',
     fontFamily: 'Outfit',
   },
   {
-    themeName: 'Forest Wealth',
-    backgroundColor: '#051812',
+    themeName: 'Risk Assessment (Green)',
+    backgroundColor: '#065f46',
     textColor: '#ffffff',
     primaryColor: '#10b981',
     secondaryColor: '#34d399',
     fontFamily: 'Outfit',
   },
   {
-    themeName: 'Charcoal Gold',
-    backgroundColor: '#111111',
+    themeName: 'Retirement Strategy (Navy)',
+    backgroundColor: '#1e3a5f',
     textColor: '#ffffff',
-    primaryColor: '#d97706',
-    secondaryColor: '#fbbf24',
-    fontFamily: 'Playfair Display',
-  },
-  {
-    themeName: 'Deep Indigo',
-    backgroundColor: '#0b0c16',
-    textColor: '#ffffff',
-    primaryColor: '#6366f1',
-    secondaryColor: '#818cf8',
+    primaryColor: '#2563EB',
+    secondaryColor: '#3b82f6',
     fontFamily: 'Inter',
   },
   {
-    themeName: 'Carbon Platinum',
-    backgroundColor: '#18181b',
-    textColor: '#f4f4f5',
-    primaryColor: '#e2e8f0',
-    secondaryColor: '#94a3b8',
+    themeName: 'Investment Recommendations (Indigo)',
+    backgroundColor: '#0c1445',
+    textColor: '#ffffff',
+    primaryColor: '#1e40af',
+    secondaryColor: '#6366f1',
+    fontFamily: 'Inter',
+  },
+  {
+    themeName: 'Annual Performance (Sky)',
+    backgroundColor: '#1e40af',
+    textColor: '#ffffff',
+    primaryColor: '#60a5fa',
+    secondaryColor: '#93c5fd',
+    fontFamily: 'Outfit',
+  },
+  {
+    themeName: 'Portfolio Rebalance (Mint)',
+    backgroundColor: '#065f46',
+    textColor: '#ffffff',
+    primaryColor: '#34d399',
+    secondaryColor: '#6ee7b7',
     fontFamily: 'Plus Jakarta Sans',
+  },
+  {
+    themeName: 'Tax Optimization (Ocean)',
+    backgroundColor: '#1e3a5f',
+    textColor: '#ffffff',
+    primaryColor: '#3b82f6',
+    secondaryColor: '#93c5fd',
+    fontFamily: 'Outfit',
+  },
+  {
+    themeName: 'Client Onboarding (Purple)',
+    backgroundColor: '#0c1445',
+    textColor: '#ffffff',
+    primaryColor: '#6366f1',
+    secondaryColor: '#a78bfa',
+    fontFamily: 'Outfit',
   }
 ]
-
 const DeckBuilder = () => {
   const {
     selectedPersona,
@@ -86,6 +108,12 @@ const DeckBuilder = () => {
     updateCustomSlideContent,
     updateSpecificSlideContent,
     resetDeckForTemplate,
+
+    // Client Management
+    clients,
+    selectedClient,
+    selectClient,
+    importClientsFromCSV,
   } = useAppStore()
 
   // Make sure we have data loaded for the selected persona
@@ -95,21 +123,168 @@ const DeckBuilder = () => {
     }
   }, [selectedPersona, deckBuilderStep])
 
-  const handleClientSelect = async (persona: typeof selectedPersona) => {
-    setPersona(persona)
+  // Template Configuration form states
+  const [reportingPeriod, setReportingPeriod] = useState<string>('Q1 2026 (January - March 2026)')
+  const [focusAreas, setFocusAreas] = useState<string>('Portfolio performance, asset allocation review, risk assessment')
+  const [meetingObjective, setMeetingObjective] = useState<string>('Review Q1 performance and discuss Q2 strategy')
+  const [additionalNotes, setAdditionalNotes] = useState<string>('')
+  
+  // Presentation inclusion slide flags
+  const [includeCharts, setIncludeCharts] = useState<boolean>(true)
+  const [includeBenchmark, setIncludeBenchmark] = useState<boolean>(true)
+  const [includeMarketOutlook, setIncludeMarketOutlook] = useState<boolean>(true)
+
+  // Dynamically update default values based on selected template
+  useEffect(() => {
+    if (!selectedTemplate) return
+    
+    if (selectedTemplate.includes('Quarterly') || selectedTemplate.includes('Q1') || selectedTemplate.includes('Q2')) {
+      setReportingPeriod('Q1 2026 (January - March 2026)')
+      setFocusAreas('Portfolio performance, asset allocation review, risk assessment')
+      setMeetingObjective('Review Q1 performance and discuss Q2 strategy')
+    } else if (selectedTemplate.includes('Performance') || selectedTemplate.includes('Annual')) {
+      setReportingPeriod('Last 12 Months (YTD)')
+      setFocusAreas('Asset class allocation, benchmark comparisons, fee analysis')
+      setMeetingObjective('Evaluate historical returns and portfolio composition')
+    } else if (selectedTemplate.includes('Retirement')) {
+      setReportingPeriod('2026 - 2046 Projection')
+      setFocusAreas('Monte Carlo probability, monthly drawdowns, inflation protection')
+      setMeetingObjective('Assess retirement readiness and income safety margin')
+    } else if (selectedTemplate.includes('Risk')) {
+      setReportingPeriod('Current Portfolio Allocation')
+      setFocusAreas('Stress testing, volatility analysis, correlation report')
+      setMeetingObjective('Validate risk thresholds and downside protection limits')
+    } else {
+      setReportingPeriod('Next 12 Months')
+      setFocusAreas('Sector allocation recommendations, rebalancing strategy')
+      setMeetingObjective('Outline investment proposal and capital deployment targets')
+    }
+  }, [selectedTemplate])
+
+  const handleClientSelect = async (client: import('../store/useAppStore').Client) => {
+    selectClient(client)
+    // Update branding with client's name!
+    setBranding(prev => ({
+      ...prev,
+      clientName: client.name,
+      footerText: `Alexander Forbes Engage · Prepared for ${client.name}`,
+    }))
+    
+    if (selectedTemplate === 'Custom Canvas') {
+      setDeckBuilderStep('generating')
+      resetDeckForTemplate('custom')
+      setTimeout(() => {
+        // Log activity
+        fetch('/api/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'deck_generate',
+            title: 'Custom Slide Deck Created',
+            description: `Started new custom blank canvas deck for ${client.name}.`,
+            metadata: { clientId: client.id, clientName: client.name }
+          })
+        }).catch(err => console.error(err))
+        
+        setDeckBuilderStep('workspace')
+      }, 4000)
+    } else {
+      setDeckBuilderStep('template-config')
+    }
+  }
+
+  const handleGeneratePresentation = () => {
     setDeckBuilderStep('generating')
     
-    // Initialize slide deck state based on chosen template mode
-    if (selectedTemplate === 'Custom Canvas') {
-      resetDeckForTemplate('custom')
-    } else {
-      resetDeckForTemplate('fixed')
-    }
+    // Initialize standard deck
+    resetDeckForTemplate('fixed')
     
-    // Simulate AI Story Engine analysis
     setTimeout(() => {
+      // Get current deck from store
+      const currentDeck = useAppStore.getState().deck
+      
+      // Map/filter deck based on template config values
+      let finalSlides = [...currentDeck]
+      
+      // 1. Cover slide update
+      finalSlides = finalSlides.map(s => {
+        if (s.type === 'cover') {
+          return {
+            ...s,
+            title: selectedTemplate || 'Client Review',
+            content: `${selectedClient?.name || 'Client'} · ${reportingPeriod}`,
+            notes: `Meeting Objective: ${meetingObjective}\nFocus Areas: ${focusAreas}\n\nNotes: ${additionalNotes}`
+          }
+        }
+        if (s.type === 'insights') {
+          return {
+            ...s,
+            content: `• Objective: ${meetingObjective}\n• Key Focus: ${focusAreas}\n• Focus Areas: Portfolio optimization under the ${selectedClient?.persona || 'balanced'} strategy.`
+          }
+        }
+        return s
+      })
+      
+      // 2. Checkbox filters
+      if (!includeCharts) {
+        finalSlides = finalSlides.filter(s => s.type !== 'metrics' && s.type !== 'montecarlo')
+      }
+      if (!includeBenchmark) {
+        finalSlides = finalSlides.filter(s => s.type !== 'holdings')
+      }
+      if (!includeMarketOutlook) {
+        finalSlides = finalSlides.filter(s => s.type !== 'timeline' && s.type !== 'risk')
+      }
+      
+      // Update store deck
+      useAppStore.setState({
+        deck: finalSlides,
+        selectedSlideId: finalSlides[0]?.id || '1'
+      })
+      
+      // Log activity
+      fetch('/api/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'deck_generate',
+          title: 'Slide Deck Generated',
+          description: `Generated ${selectedTemplate} presentation with custom config for ${selectedClient?.name}.`,
+          metadata: { clientId: selectedClient?.id, clientName: selectedClient?.name }
+        })
+      }).catch(err => console.error(err))
+      
+      // Move to workspace
       setDeckBuilderStep('workspace')
     }, 4000)
+  }
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      if (text) {
+        importClientsFromCSV(text)
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const downloadCsvTemplate = () => {
+    const csvContent = "data:text/csv;charset=utf-8,Name,Age,Persona,Portfolio Value,Goal,Sharpe,Volatility\n"
+      + "Pratik Forbes,35,family-planner,320000,750000,1.55,10.4\n"
+      + "Sipho Khumalo,58,retirement-client,1250000,1800000,1.15,6.2\n"
+      + "Zama Naidoo,26,young-investor,85000,300000,2.05,24.1";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "af_clients_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   const [isDrafting, setIsDrafting] = useState<boolean>(false)
@@ -178,17 +353,28 @@ const DeckBuilder = () => {
 
   // Branding configuration
   const [branding, setBranding] = useState<BrandingConfig>({
-    themeName: 'Midnight Blue (Default)',
-    backgroundColor: '#0b1329',
+    themeName: 'Quarterly Review (Blue)',
+    backgroundColor: '#1e40af',
     textColor: '#ffffff',
     primaryColor: '#38bdf8',
-    secondaryColor: '#a78bfa',
-    clientName: 'Sarah Jenkins',
+    secondaryColor: '#60a5fa',
+    clientName: 'Margaret Chen',
     logoPreset: 'standard',
     logoUrl: '',
-    footerText: 'Confidential Strategy Report · Prepared for Jenkins Family Trust',
+    footerText: 'Alexander Forbes Engage · Prepared for Margaret Chen',
     fontFamily: 'Outfit',
   })
+
+  // Sync branding client name whenever the selected client changes (e.g. navigating from Clients page)
+  useEffect(() => {
+    if (selectedClient) {
+      setBranding(prev => ({
+        ...prev,
+        clientName: selectedClient.name,
+        footerText: `Alexander Forbes Engage · Prepared for ${selectedClient.name}`,
+      }))
+    }
+  }, [selectedClient?.id])
 
   // Theme application
   const applyPresetTheme = (theme: typeof PRESET_THEMES[0]) => {
@@ -475,8 +661,8 @@ const DeckBuilder = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#020617',
-      color: '#ffffff',
+      background: 'transparent',
+      color: '#0F172A',
       paddingBottom: 40,
     }}>
       {/* Global Print Styling Injection */}
@@ -526,159 +712,641 @@ const DeckBuilder = () => {
 
       {/* Screen Layout wrapper */}
       <div id="screen-root" className="page-container-wide">
-        <Navbar />
 
         {deckBuilderStep !== 'workspace' ? (
           <div className="wizard-screen">
             {deckBuilderStep === 'start' && (
-              <div className="wizard-start">
-                <h1 style={{ fontSize: 36, fontWeight: 800, color: '#f8fafc', margin: 0 }}>Deck Builder</h1>
-                <p style={{ color: '#94a3b8', fontSize: 16 }}>Create an engaging investment story for your client in minutes.</p>
-                <button 
-                  onClick={() => setDeckBuilderStep('template-selection')}
-                  style={{ padding: '14px 28px', background: 'linear-gradient(135deg, #38bdf8, #a78bfa)', color: 'white', borderRadius: 8, fontSize: 16, fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 14px rgba(56,189,248,0.4)' }}
-                >
-                  Create New Investment Story
-                </button>
+              <div style={{ animation: 'fadeIn 0.25s ease' }}>
+                {/* Deck Library Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <div>
+                    <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: 0 }}>Deck Library</h1>
+                    <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>8 presentations across all clients</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      selectClient(null)
+                      setDeckBuilderStep('creation-mode')
+                    }}
+                    style={{
+                      padding: '10px 18px', background: '#2563EB', color: '#FFFFFF',
+                      border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13.5,
+                      display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+                  >
+                    + Create New Deck
+                  </button>
+                </div>
+
+                {/* Search + Filter bar */}
+                <div style={{ display: 'flex', gap: 12, marginBottom: 24, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F1F5F9', padding: '8px 14px', borderRadius: 8, flex: 1, maxWidth: 280 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <span style={{ fontSize: 13, color: '#94A3B8' }}>Search decks...</span>
+                  </div>
+                  <button style={{ padding: '8px 14px', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    Filter by Type
+                  </button>
+                </div>
+
+                {/* Deck Cards Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+                  {[
+                    { title: 'Q1 2026 Portfolio Review', client: 'Margaret Chen', type: 'Quarterly Review', status: 'Completed', slides: 18, date: 'Jun 9, 2026', color1: '#1e40af', color2: '#3b82f6' },
+                    { title: 'Risk Assessment — Growth Portfolio', client: 'Robert Harrington', type: 'Risk Assessment', status: 'In Review', slides: 12, date: 'Jun 1, 2026', color1: '#065f46', color2: '#10b981' },
+                    { title: 'Retirement Planning Strategy 2026', client: 'Patricia Sullivan', type: 'Retirement Planning', status: 'Draft', slides: 9, date: 'May 22, 2026', color1: '#1e3a5f', color2: '#2563EB' },
+                    { title: 'Investment Recommendations Q2', client: 'James Okonkwo', type: 'Investment', status: 'Completed', slides: 15, date: 'May 18, 2026', color1: '#0c1445', color2: '#1e40af' },
+                    { title: 'Annual Performance Review', client: 'Sarah Kowalski', type: 'Performance', status: 'Completed', slides: 22, date: 'May 9, 2026', color1: '#1e40af', color2: '#60a5fa' },
+                    { title: 'Portfolio Rebalancing Proposal', client: 'David Kim', type: 'Portfolio', status: 'Completed', slides: 14, date: 'May 1, 2026', color1: '#065f46', color2: '#34d399' },
+                    { title: 'Tax Optimization Strategy', client: 'Linda Nakamura', type: 'Tax Planning', status: 'In Review', slides: 11, date: 'Apr 25, 2026', color1: '#1e3a5f', color2: '#3b82f6' },
+                    { title: 'New Client Onboarding Deck', client: 'Thomas Reyes', type: 'Onboarding', status: 'Draft', slides: 8, date: 'Apr 15, 2026', color1: '#0c1445', color2: '#6366f1' },
+                  ].map((deck, i) => {
+                    const statusColors: Record<string, {bg: string, color: string}> = {
+                      'Completed': { bg: '#D1FAE5', color: '#059669' },
+                      'In Review': { bg: '#FEF3C7', color: '#D97706' },
+                      'Draft':     { bg: '#F1F5F9', color: '#64748B' },
+                    }
+                    const sc = statusColors[deck.status]
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          const client = clients.find(c => c.name === deck.client)
+                          if (client) {
+                            selectClient(client)
+                          }
+                          const secondaryColor = {
+                            '#3b82f6': '#60a5fa',
+                            '#10b981': '#34d399',
+                            '#2563EB': '#3b82f6',
+                            '#1e40af': '#60a5fa',
+                            '#60a5fa': '#93c5fd',
+                            '#34d399': '#6ee7b7',
+                            '#6366f1': '#a78bfa',
+                          }[deck.color2] || '#ffffff'
+
+                          setBranding({
+                            themeName: deck.title + " Theme",
+                            backgroundColor: deck.color1,
+                            textColor: '#ffffff',
+                            primaryColor: deck.color2,
+                            secondaryColor: secondaryColor,
+                            clientName: deck.client,
+                            logoPreset: 'standard',
+                            logoUrl: '',
+                            footerText: `Alexander Forbes Engage · Prepared for ${deck.client}`,
+                            fontFamily: 'Outfit',
+                          })
+                          setSelectedTemplate(deck.type)
+                          resetDeckForTemplate('fixed')
+                          setDeckBuilderStep('generating')
+                          setTimeout(() => {
+                            setDeckBuilderStep('workspace')
+                          }, 4000)
+                        }}
+                        style={{
+                          background: '#FFFFFF', border: '1px solid #E2E8F0',
+                          borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
+                          transition: 'all 0.2s ease', boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                        onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'none' }}
+                      >
+                        {/* Thumbnail Preview */}
+                        <div style={{
+                          height: 130, background: `linear-gradient(135deg, ${deck.color1}, ${deck.color2})`,
+                          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                          padding: '12px 14px', position: 'relative', overflow: 'hidden'
+                        }}>
+                          {/* Slide preview lines */}
+                          <div style={{ position: 'absolute', bottom: 16, left: 14, right: 14 }}>
+                            <div style={{ height: 2, background: 'rgba(255,255,255,0.4)', borderRadius: 2, marginBottom: 6 }} />
+                            <div style={{ height: 2, background: 'rgba(255,255,255,0.25)', borderRadius: 2, width: '70%', marginBottom: 6 }} />
+                            <div style={{ height: 2, background: 'rgba(255,255,255,0.15)', borderRadius: 2, width: '50%' }} />
+                          </div>
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <div style={{ width: 6, height: 6, borderRadius: 1, background: 'rgba(255,255,255,0.6)' }} />
+                            <div style={{ width: 6, height: 6, borderRadius: 1, background: 'rgba(255,255,255,0.4)' }} />
+                          </div>
+                          <button style={{ background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: 4, color: '#fff', padding: '2px 6px', fontSize: 10, cursor: 'pointer' }}>···</button>
+                        </div>
+                        {/* Card metadata */}
+                        <div style={{ padding: '14px 16px' }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>{deck.title}</div>
+                          <div style={{ fontSize: 12, color: '#64748B', marginBottom: 10 }}>{deck.client}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#EFF6FF', color: '#2563EB', fontWeight: 600 }}>{deck.type}</span>
+                            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: sc.bg, color: sc.color, fontWeight: 600 }}>{deck.status}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 10, display: 'flex', gap: 10 }}>
+                            <span>{deck.slides} slides</span>
+                            <span>·</span>
+                            <span>{deck.date}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
             
-            {deckBuilderStep === 'template-selection' && (
-              <div style={{ padding: '40px 20px', maxWidth: 1000, margin: '0 auto' }}>
-                <h2 style={{ fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 800, marginBottom: 8, textAlign: 'center', color: '#f8fafc', letterSpacing: '-0.02em' }}>Choose Your Investment Story Theme</h2>
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14, marginBottom: 40 }}>Select a pre-built structure or start with a custom blank canvas</p>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 30, alignItems: 'stretch' }}>
-                  {/* Left Column: Custom Blank Canvas */}
-                  <div style={{
-                    background: 'rgba(15, 23, 42, 0.4)',
-                    border: '2px dashed rgba(56, 189, 248, 0.3)',
-                    borderRadius: 16,
-                    padding: 32,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                  }}
-                  onClick={() => { setSelectedTemplate('Custom Canvas'); setDeckBuilderStep('client-selection'); }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#38bdf8';
-                    e.currentTarget.style.background = 'rgba(56, 189, 248, 0.05)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.3)';
-                    e.currentTarget.style.background = 'rgba(15, 23, 42, 0.4)';
-                    e.currentTarget.style.transform = 'none';
-                  }}
+            {deckBuilderStep === 'creation-mode' && (
+              <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px', animation: 'fadeIn 0.25s ease' }}>
+                {/* Back button */}
+                <button
+                  onClick={() => setDeckBuilderStep('start')}
+                  style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, padding: 0 }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#0F172A'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#64748B'}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                  Back to Library
+                </button>
+
+                <h2 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>Create New Presentation</h2>
+                <p style={{ fontSize: 13, color: '#64748B', marginBottom: 32 }}>
+                  Select how you want to build this presentation. You can use a prebuilt template or start from scratch.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                  {/* Card 1: Use Template */}
+                  <div
+                    onClick={() => {
+                      setDeckBuilderStep('template-selection')
+                    }}
+                    style={{
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 16,
+                      padding: 32,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 16,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = '#2563EB'
+                      e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(37,99,235,0.1), 0 8px 10px -6px rgba(37,99,235,0.05)'
+                      e.currentTarget.style.transform = 'translateY(-2px)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = '#E2E8F0'
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01)'
+                      e.currentTarget.style.transform = 'none'
+                    }}
                   >
                     <div style={{
-                      width: 60, height: 60, borderRadius: '50%',
-                      background: 'rgba(56, 189, 248, 0.1)',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      width: 48, height: 48, borderRadius: 12,
+                      background: 'rgba(37,99,235,0.08)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      marginBottom: 20
+                      color: '#2563EB', fontSize: 24,
                     }}>
-                      <Layers size={28} color="#38bdf8" />
+                      <Layers size={22} />
                     </div>
-                    <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 10px 0' }}>Custom Blank Canvas</h3>
-                    <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>
-                      Start with a clean slate and build your own deck using the modular Slide Brick library.
-                    </p>
+                    <div>
+                      <h3 style={{ fontSize: 17, fontWeight: 700, color: '#0F172A', margin: '0 0 8px 0' }}>Use Prebuilt Template</h3>
+                      <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.5, margin: 0 }}>
+                        Start with a structured, advisor-approved template layout like Quarterly Review, Portfolio Performance, or Retirement Strategy.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
+                      <span style={{ fontSize: 10.5, padding: '3px 8px', borderRadius: 4, background: '#EFF6FF', color: '#2563EB', fontWeight: 600 }}>Fast Onboarding</span>
+                      <span style={{ fontSize: 10.5, padding: '3px 8px', borderRadius: 4, background: '#EFF6FF', color: '#2563EB', fontWeight: 600 }}>AI Narrative</span>
+                    </div>
                   </div>
 
-                  {/* Right Column: Pre-built templates */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    <h4 style={{ fontSize: 12, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Pre-Built Templates</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      {['Retirement Review', 'Portfolio Performance Review', 'Risk Assessment', 'Fee Impact Analysis', 'Wealth Growth Review', 'Sustainability Planning'].map(template => (
-                        <button 
-                          key={template}
-                          onClick={() => { setSelectedTemplate(template); setDeckBuilderStep('client-selection'); }}
-                          style={{
-                            padding: '18px 20px',
-                            background: 'rgba(15, 23, 42, 0.6)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            borderRadius: 12,
-                            color: '#cbd5e1',
-                            fontSize: 14,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.background = 'rgba(56,189,248,0.08)'; e.currentTarget.style.color = '#fff'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)'; e.currentTarget.style.color = '#cbd5e1'; }}
-                        >
-                          {template}
-                        </button>
-                      ))}
+                  {/* Card 2: Create Custom Deck */}
+                  <div
+                    onClick={() => {
+                      setSelectedTemplate('Custom Canvas')
+                      handleGeneratePresentation()
+                    }}
+                    style={{
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 16,
+                      padding: 32,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 16,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = '#10B981'
+                      e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(16,185,129,0.1), 0 8px 10px -6px rgba(16,185,129,0.05)'
+                      e.currentTarget.style.transform = 'translateY(-2px)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = '#E2E8F0'
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01)'
+                      e.currentTarget.style.transform = 'none'
+                    }}
+                  >
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 12,
+                      background: 'rgba(16,185,129,0.08)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#10B981', fontSize: 24,
+                    }}>
+                      <GitFork size={22} />
                     </div>
-                    <button 
-                      onClick={() => { setSelectedTemplate('AI Generated Deck'); setDeckBuilderStep('client-selection'); }}
-                      style={{
-                        padding: '18px',
-                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(167, 139, 250, 0.15))',
-                        border: '1px solid #a78bfa',
-                        borderRadius: 12,
-                        color: '#c084fc',
-                        fontSize: 14,
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 10,
-                        transition: 'all 0.2s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 0 20px rgba(167, 139, 250, 0.3)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none' }}
-                    >
-                      <Sparkles size={16} /> AI Generated Deck
-                    </button>
+                    <div>
+                      <h3 style={{ fontSize: 17, fontWeight: 700, color: '#0F172A', margin: '0 0 8px 0' }}>Create Custom Deck</h3>
+                      <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.5, margin: 0 }}>
+                        Start with a blank cover slide. Build your presentation slide-by-slide, drag in custom slide bricks, and use AI prompts to draft commentary on the fly.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
+                      <span style={{ fontSize: 10.5, padding: '3px 8px', borderRadius: 4, background: '#ECFDF5', color: '#10B981', fontWeight: 600 }}>Flexible</span>
+                      <span style={{ fontSize: 10.5, padding: '3px 8px', borderRadius: 4, background: '#ECFDF5', color: '#10B981', fontWeight: 600 }}>Blank Canvas</span>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
-            
-            {deckBuilderStep === 'client-selection' && (
-              <div style={{ padding: '40px 20px', maxWidth: 600, margin: '0 auto' }}>
-                <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 30, textAlign: 'center', color: '#f8fafc' }}>Select a Client</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <button onClick={() => handleClientSelect('retirement-client')} style={{ padding: '24px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(99, 179, 237, 0.2)', borderRadius: 12, color: 'white', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.background = 'rgba(56,189,248,0.1)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(99, 179, 237, 0.2)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)' }}
+
+            {deckBuilderStep === 'template-selection' && (
+              <div style={{ maxWidth: 860, margin: '0 auto', animation: 'fadeIn 0.25s ease' }}>
+                {/* Back button */}
+                <button
+                  onClick={() => setDeckBuilderStep('creation-mode')}
+                  style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, padding: 0 }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#0F172A'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#64748B'}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                  Back
+                </button>
+
+                <h2 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>Select a Template</h2>
+                <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24 }}>
+                  Choose a presentation structure designed for <strong style={{ color: '#2563EB' }}>financial advisors</strong>
+                </p>
+
+                {/* Category Tabs */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+                  {['All', 'Performance', 'Planning', 'Risk', 'Strategy'].map((tab, idx) => (
+                    <button key={tab} style={{
+                      padding: '6px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
+                      background: idx === 0 ? '#2563EB' : '#F1F5F9',
+                      color: idx === 0 ? '#FFFFFF' : '#64748B'
+                    }}>{tab}</button>
+                  ))}
+                </div>
+
+                {/* Template List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                  {[
+                    {
+                      icon: '📊', name: 'Quarterly Review', badge: 'Most Used', slides: 18,
+                      desc: 'Comprehensive quarterly portfolio performance review with benchmark comparisons and forward outlook.',
+                      tags: ['Reporting Period', 'Portfolio Holdings', 'Benchmark', 'Meeting Objective'],
+                      color: '#2563EB'
+                    },
+                    {
+                      icon: '📈', name: 'Portfolio Performance', badge: null, slides: 14,
+                      desc: 'Deep-dive performance attribution analysis with asset class breakdown and risk-adjusted returns.',
+                      tags: ['Period', 'Asset Allocation', 'Benchmark', 'Key Metrics'],
+                      color: '#10B981'
+                    },
+                    {
+                      icon: '🕐', name: 'Retirement Planning', badge: null, slides: 16,
+                      desc: 'Long-term retirement income strategy with projected scenarios, Social Security optimization and drawdown modelling.',
+                      tags: ['Target Date', 'Income Goals', 'Risk Tolerance', 'Current Assets'],
+                      color: '#F59E0B'
+                    },
+                    {
+                      icon: '🛡', name: 'Risk Assessment', badge: null, slides: 12,
+                      desc: 'Portfolio risk profiling with stress testing, correlation analysis, and recommended adjustments.',
+                      tags: ['Risk Profile', 'Portfolio Holdings', 'Market Scenarios', 'Time Horizon'],
+                      color: '#EF4444'
+                    },
+                    {
+                      icon: '💼', name: 'Investment Recommendation', badge: null, slides: 15,
+                      desc: 'Actionable investment recommendations with rationale, expected returns and implementation roadmap.',
+                      tags: ['Investment Goals', 'Capital Available', 'Sectors', 'Timeline'],
+                      color: '#7C3AED'
+                    },
+                  ].map((tmpl) => (
+                    <div
+                      key={tmpl.name}
+                      onClick={() => { setSelectedTemplate(tmpl.name); setDeckBuilderStep('template-config'); }}
+                      style={{
+                        background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12,
+                        padding: '20px 24px', cursor: 'pointer', transition: 'all 0.18s ease',
+                        display: 'flex', alignItems: 'center', gap: 20
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(37,99,235,0.1)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none' }}
+                    >
+                      {/* Icon */}
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                        background: `${tmpl.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20
+                      }}>
+                        {tmpl.icon}
+                      </div>
+
+                      {/* Description */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>{tmpl.name}</span>
+                          {tmpl.badge && (
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#FEF3C7', color: '#D97706' }}>⭐ {tmpl.badge}</span>
+                          )}
+                        </div>
+                        <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 10px 0', lineHeight: 1.5 }}>{tmpl.desc}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Requires:</span>
+                          {tmpl.tags.map(tag => (
+                            <span key={tag} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#F1F5F9', color: '#475569', fontWeight: 500 }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Slide count + arrow */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                        <span style={{ fontSize: 12, color: '#94A3B8' }}>{tmpl.slides} slides</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bottom CTA */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    disabled
+                    style={{ padding: '10px 20px', background: '#CBD5E1', color: '#94A3B8', border: 'none', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'not-allowed' }}
                   >
-                    <div style={{ fontSize: 18, fontWeight: 'bold' }}>David</div>
-                    <div style={{ color: '#94a3b8', marginTop: 6, fontSize: 14 }}>Age: 45 | Retirement Goal: 60</div>
-                  </button>
-                  <button onClick={() => handleClientSelect('family-planner')} style={{ padding: '24px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(99, 179, 237, 0.2)', borderRadius: 12, color: 'white', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.background = 'rgba(56,189,248,0.1)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(99, 179, 237, 0.2)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)' }}
-                  >
-                    <div style={{ fontSize: 18, fontWeight: 'bold' }}>Sarah</div>
-                    <div style={{ color: '#94a3b8', marginTop: 6, fontSize: 14 }}>Age: 38 | College Planning</div>
-                  </button>
-                  <button onClick={() => handleClientSelect('young-investor')} style={{ padding: '24px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(99, 179, 237, 0.2)', borderRadius: 12, color: 'white', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.background = 'rgba(56,189,248,0.1)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(99, 179, 237, 0.2)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)' }}
-                  >
-                    <div style={{ fontSize: 18, fontWeight: 'bold' }}>Alex</div>
-                    <div style={{ color: '#94a3b8', marginTop: 6, fontSize: 14 }}>Age: 28 | Wealth Growth</div>
+                    Configure Template →
                   </button>
                 </div>
               </div>
             )}
-            
+
+            {deckBuilderStep === 'template-config' && (() => {
+              const outlineItems = [
+                { num: '01', name: 'Executive Summary', show: true },
+                { num: '02', name: 'Portfolio Overview', show: true },
+                { num: '03', name: 'Asset Allocation', show: true },
+                { num: '04', name: 'Performance vs Benchmark', show: includeBenchmark },
+                { num: '05', name: 'Top Holdings', show: includeBenchmark },
+                { num: '06', name: 'Risk Metrics', show: true },
+                { num: '07', name: 'Market Commentary', show: includeMarketOutlook },
+                { num: '08', name: 'Key Takeaways', show: true },
+                { num: '09', name: 'Next Steps', show: true },
+                { num: '10', name: 'Performance Charts', show: includeCharts },
+                { num: '11', name: 'Market Outlook', show: includeMarketOutlook }
+              ];
+              const activeOutline = outlineItems.filter(item => item.show);
+
+              return (
+                <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px', animation: 'fadeIn 0.25s ease' }}>
+                  {/* Back button */}
+                  <button
+                    onClick={() => setDeckBuilderStep('client-selection')}
+                    style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, padding: 0 }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#0F172A'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#64748B'}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                    Back
+                  </button>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 32, alignItems: 'start' }}>
+                    
+                    {/* Left Column: Form Settings */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                      
+                      {/* Client Information summary card */}
+                      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
+                        <h3 style={{ fontSize: 14, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          Client Information
+                        </h3>
+                        {(() => {
+                          const personaIndustryMap: Record<string, string> = {
+                            'family-planner': 'Family Office',
+                            'young-investor': 'Technology / Growth',
+                            'retirement-client': 'Retirement Planning',
+                          }
+                          const industryLabel = personaIndustryMap[selectedClient?.persona || ''] || 'Wealth Management'
+                          const portfolioVal = selectedClient?.current
+                            ? `$${selectedClient.current.toLocaleString()}`
+                            : '—'
+                          const goalVal = selectedClient?.goal
+                            ? `$${selectedClient.goal.toLocaleString()}`
+                            : ''
+
+                          return (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Client Name</label>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', background: '#F8FAFC', padding: '8px 12px', borderRadius: 6, marginTop: 4 }}>
+                                  {branding.clientName}
+                                </div>
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Company / Entity</label>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', background: '#F8FAFC', padding: '8px 12px', borderRadius: 6, marginTop: 4 }}>
+                                  {selectedClient?.company || '—'}
+                                </div>
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Industry</label>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', background: '#F8FAFC', padding: '8px 12px', borderRadius: 6, marginTop: 4 }}>
+                                  {industryLabel}
+                                </div>
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Portfolio Value</label>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', background: '#F8FAFC', padding: '8px 12px', borderRadius: 6, marginTop: 4 }}>
+                                  {portfolioVal}
+                                  {goalVal && (
+                                    <span style={{ fontSize: 11, fontWeight: 400, color: '#64748B', marginLeft: 6 }}>
+                                      / {goalVal} goal
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+
+                      {/* Presentation Details */}
+                      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <h3 style={{ fontSize: 14, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                          Presentation Details
+                        </h3>
+
+                        <div>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 6 }}>Reporting Period *</label>
+                          <select
+                            value={reportingPeriod}
+                            onChange={(e) => setReportingPeriod(e.target.value)}
+                            style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13.5, background: '#FFFFFF', color: '#0F172A' }}
+                          >
+                            <option value="Q1 2026 (January - March 2026)">Q1 2026 (January - March 2026)</option>
+                            <option value="Q2 2026 (April - June 2026)">Q2 2026 (April - June 2026)</option>
+                            <option value="Q3 2026 (July - September 2026)">Q3 2026 (July - September 2026)</option>
+                            <option value="Q4 2026 (October - December 2026)">Q4 2026 (October - December 2026)</option>
+                            <option value="2025 Annual Review (Full Year)">2025 Annual Review (Full Year)</option>
+                            <option value="Last 12 Months (YTD Performance)">Last 12 Months (YTD Performance)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 6 }}>Focus Areas</label>
+                          <input
+                            type="text"
+                            value={focusAreas}
+                            onChange={(e) => setFocusAreas(e.target.value)}
+                            placeholder="e.g. Portfolio performance, asset allocation review, risk assessment"
+                            style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13.5, color: '#0F172A', boxSizing: 'border-box' }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 6 }}>Meeting Objective *</label>
+                          <input
+                            type="text"
+                            value={meetingObjective}
+                            onChange={(e) => setMeetingObjective(e.target.value)}
+                            placeholder="e.g. Review Q1 performance and discuss Q2 strategy"
+                            style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13.5, color: '#0F172A', boxSizing: 'border-box' }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 6 }}>Additional Notes</label>
+                          <textarea
+                            value={additionalNotes}
+                            onChange={(e) => setAdditionalNotes(e.target.value)}
+                            placeholder="Any additional context or specific points to include..."
+                            rows={3}
+                            style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13.5, color: '#0F172A', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Include In Presentation */}
+                      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <h3 style={{ fontSize: 14, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                          Include In Presentation
+                        </h3>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155' }}>
+                            <input
+                              type="checkbox"
+                              checked={includeCharts}
+                              onChange={(e) => setIncludeCharts(e.target.checked)}
+                              style={{ width: 16, height: 16, cursor: 'pointer' }}
+                            />
+                            Performance Charts & Visualizations
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155' }}>
+                            <input
+                              type="checkbox"
+                              checked={includeBenchmark}
+                              onChange={(e) => setIncludeBenchmark(e.target.checked)}
+                              style={{ width: 16, height: 16, cursor: 'pointer' }}
+                            />
+                            Benchmark Comparison Analysis
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#334155' }}>
+                            <input
+                              type="checkbox"
+                              checked={includeMarketOutlook}
+                              onChange={(e) => setIncludeMarketOutlook(e.target.checked)}
+                              style={{ width: 16, height: 16, cursor: 'pointer' }}
+                            />
+                            Forward-Looking Market Outlook
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                        <button
+                          onClick={handleGeneratePresentation}
+                          style={{
+                            padding: '12px 24px', background: '#2563EB', color: '#FFFFFF',
+                            border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14,
+                            cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
+                            display: 'flex', alignItems: 'center', gap: 8
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+                          onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+                        >
+                          Generate Presentation →
+                        </button>
+                      </div>
+
+                    </div>
+
+                    {/* Right Column: Deck Summary Card */}
+                    <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#2563EB', marginBottom: 16 }}>
+                        <Library size={18} />
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deck Summary</span>
+                      </div>
+
+                      <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0' }}>{selectedTemplate || 'Quarterly Review'}</h3>
+                      <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 20px 0' }}>{branding.clientName} · {selectedClient?.company || '—'}</p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 20, borderBottom: '1px solid #F1F5F9', marginBottom: 20 }}>
+                        <div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Period</span>
+                          <span style={{ fontSize: 12.5, fontWeight: 600, color: '#334155' }}>{reportingPeriod}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Objective</span>
+                          <span style={{ fontSize: 12.5, color: '#334155', lineHeight: 1.4 }}>{meetingObjective}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Slides</span>
+                          <span style={{ fontSize: 12.5, fontWeight: 600, color: '#2563EB' }}>~{activeOutline.length} slides</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block', marginBottom: 12 }}>Slide Outline</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {activeOutline.map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#94A3B8', width: 20 }}>{item.num}</span>
+                              <span style={{ fontSize: 12.5, color: '#475569', fontWeight: 500 }}>{item.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              );
+            })()}
+
             {deckBuilderStep === 'generating' && (
               <div className="wizard-start">
                 <div style={{ width: 60, height: 60, border: '4px solid rgba(56, 189, 248, 0.1)', borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                 <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-                <h2 style={{ fontSize: 24, color: '#f8fafc', margin: 0 }}>AI Story Engine Analyzing...</h2>
-                <div style={{ color: '#94a3b8', textAlign: 'center', fontSize: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <h2 style={{ fontSize: 24, color: '#0F172A', margin: 0 }}>AI Story Engine Analyzing...</h2>
+                <div style={{ color: '#64748B', textAlign: 'center', fontSize: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <p style={{ margin: 0 }}>• Retrieving client data</p>
                   <p style={{ margin: 0 }}>• Analyzing Performance, Risk & Fees</p>
                   <p style={{ margin: 0 }}>• Generating Narrative Flow</p>
@@ -845,8 +1513,8 @@ const DeckBuilder = () => {
         >
           {/* COLUMN 1: Slide Manager */}
           <div style={{
-            background: 'rgba(15, 23, 42, 0.6)',
-            border: '1px solid rgba(99, 179, 237, 0.08)',
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
             borderRadius: 12,
             padding: 16,
             display: 'flex',
@@ -874,8 +1542,8 @@ const DeckBuilder = () => {
                     key={slide.id}
                     onClick={() => setSelectedSlideId(slide.id)}
                     style={{
-                      background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(2, 6, 23, 0.3)',
-                      border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.06)',
+                      background: isSelected ? '#EFF6FF' : '#F8FAFC',
+                      border: isSelected ? '1px solid #2563EB' : '1px solid #E2E8F0',
                       borderRadius: 8,
                       padding: 10,
                       cursor: 'pointer',
@@ -889,7 +1557,7 @@ const DeckBuilder = () => {
                       <span style={{ fontSize: 10, color: isSelected ? '#38bdf8' : '#475569', fontWeight: 700 }}>
                         {index + 1}
                       </span>
-                      <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: isSelected ? '#1D4ED8' : '#0F172A', textTransform: 'capitalize' }}>
                         {slide.type === 'custom' ? slide.title || 'Custom Slide' : `${slide.type} Slide`}
                       </span>
                     </div>
@@ -943,7 +1611,7 @@ const DeckBuilder = () => {
             </div>
 
             {/* Slide Brick Picker */}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
+            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 12 }}>
               <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, marginBottom: 8 }}>+ ADD SLIDE BRICK</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {([
@@ -960,25 +1628,25 @@ const DeckBuilder = () => {
                     key={t}
                     onClick={() => addSlide(t as SlideItem['type'])}
                     style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: '#F1F5F9',
+                      border: '1px solid #E2E8F0',
                       borderRadius: 6,
                       fontSize: 10,
                       padding: '5px 10px',
-                      color: '#94a3b8',
+                      color: '#475569',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       fontWeight: 600,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(56,189,248,0.1)'
-                      e.currentTarget.style.borderColor = 'rgba(56,189,248,0.3)'
-                      e.currentTarget.style.color = '#38bdf8'
+                      e.currentTarget.style.backgroundColor = 'rgba(37,99,235,0.08)'
+                      e.currentTarget.style.borderColor = 'rgba(37,99,235,0.3)'
+                      e.currentTarget.style.color = '#2563EB'
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)'
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-                      e.currentTarget.style.color = '#94a3b8'
+                      e.currentTarget.style.backgroundColor = '#F1F5F9'
+                      e.currentTarget.style.borderColor = '#E2E8F0'
+                      e.currentTarget.style.color = '#475569'
                     }}
                   >
                     {label}
@@ -1170,7 +1838,7 @@ const DeckBuilder = () => {
                         onChange={(e) => setInlineTitle(e.target.value)}
                         style={{
                           background: 'rgba(2, 6, 23, 0.6)',
-                          border: '1px solid rgba(255,255,255,0.1)',
+                          border: '1px solid #E2E8F0',
                           borderRadius: 8,
                           padding: '10px 14px',
                           color: '#fff',
@@ -1187,7 +1855,7 @@ const DeckBuilder = () => {
                         onChange={(e) => setInlineContent(e.target.value)}
                         style={{
                           background: 'rgba(2, 6, 23, 0.6)',
-                          border: '1px solid rgba(255,255,255,0.1)',
+                          border: '1px solid #E2E8F0',
                           borderRadius: 8,
                           padding: '10px 14px',
                           color: '#fff',
@@ -1208,7 +1876,7 @@ const DeckBuilder = () => {
                       style={{
                         padding: '8px 16px',
                         background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid #E2E8F0',
                         color: '#cbd5e1',
                         borderRadius: 8,
                         fontSize: 12,
@@ -1243,15 +1911,15 @@ const DeckBuilder = () => {
           {/* COLUMN 3: Tabbed Sidebar Inspector */}
           <div style={{
             display: showBrandComparison ? 'none' : 'flex', flexDirection: 'column', gap: 16,
-            background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(99, 179, 237, 0.08)',
+            background: '#FFFFFF', border: '1px solid #E2E8F0',
             borderRadius: 12, padding: '16px 20px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+            boxShadow: '0 1px 4px rgba(15,23,42,0.06)'
           }}>
             {/* Tabs Header */}
-            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 8 }}>
-              <button onClick={() => setActiveTab('content')} style={{ flex: 1, padding: '10px 0', background: 'none', borderBottom: activeTab === 'content' ? '2px solid #38bdf8' : '2px solid transparent', color: activeTab === 'content' ? '#38bdf8' : '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, transition: 'all 0.2s' }}>Content</button>
-              <button onClick={() => setActiveTab('branding')} style={{ flex: 1, padding: '10px 0', background: 'none', borderBottom: activeTab === 'branding' ? '2px solid #a78bfa' : '2px solid transparent', color: activeTab === 'branding' ? '#e2e8f0' : '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, transition: 'all 0.2s' }}>Branding</button>
-              <button onClick={() => setActiveTab('data')} style={{ flex: 1, padding: '10px 0', background: 'none', borderBottom: activeTab === 'data' ? '2px solid #34d399' : '2px solid transparent', color: activeTab === 'data' ? '#e2e8f0' : '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, transition: 'all 0.2s' }}>Data</button>
+            <div style={{ display: 'flex', borderBottom: '1px solid #E2E8F0', marginBottom: 8 }}>
+              <button onClick={() => setActiveTab('content')} style={{ flex: 1, padding: '10px 0', background: 'none', borderBottom: activeTab === 'content' ? '2px solid #2563EB' : '2px solid transparent', color: activeTab === 'content' ? '#2563EB' : '#64748B', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, transition: 'all 0.2s' }}>Content</button>
+              <button onClick={() => setActiveTab('branding')} style={{ flex: 1, padding: '10px 0', background: 'none', borderBottom: activeTab === 'branding' ? '2px solid #7C3AED' : '2px solid transparent', color: activeTab === 'branding' ? '#7C3AED' : '#64748B', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, transition: 'all 0.2s' }}>Branding</button>
+              <button onClick={() => setActiveTab('data')} style={{ flex: 1, padding: '10px 0', background: 'none', borderBottom: activeTab === 'data' ? '2px solid #059669' : '2px solid transparent', color: activeTab === 'data' ? '#059669' : '#64748B', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, transition: 'all 0.2s' }}>Data</button>
             </div>
 
             <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', paddingRight: 4 }}>
@@ -1269,8 +1937,8 @@ const DeckBuilder = () => {
                       value={selectedSlide.title || ''}
                       onChange={(e) => updateCustomSlideContent('title', e.target.value)}
                       style={{
-                        width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, boxSizing: 'border-box',
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 6, color: '#0F172A', padding: '8px 12px', fontSize: 12, boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -1298,8 +1966,8 @@ const DeckBuilder = () => {
                       value={selectedSlide.content || ''}
                       onChange={(e) => updateCustomSlideContent('content', e.target.value)}
                       style={{
-                        width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, lineHeight: 1.5,
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 6, color: '#0F172A', padding: '8px 12px', fontSize: 12, lineHeight: 1.5,
                         boxSizing: 'border-box', fontFamily: selectedSlide.type === 'custom' ? 'monospace' : 'inherit',
                       }}
                     />
@@ -1322,12 +1990,12 @@ const DeckBuilder = () => {
                           onClick={() => handleRefineCommentary('Make the tone highly formal and professional for an institutional partner.')}
                           disabled={isRefining}
                           style={{
-                            padding: '4px 8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: 4, color: '#cbd5e1', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                            padding: '4px 8px', background: '#F8FAFC', border: '1px solid #E2E8F0',
+                            borderRadius: 4, color: '#475569', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
                             transition: 'all 0.2s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#EFF6FF'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#F8FAFC'}
                         >
                           🗣️ Formal Tone
                         </button>
@@ -1335,12 +2003,12 @@ const DeckBuilder = () => {
                           onClick={() => handleRefineCommentary('Focus heavily on equity growth, target wealth goals, and positive compounding returns.')}
                           disabled={isRefining}
                           style={{
-                            padding: '4px 8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: 4, color: '#cbd5e1', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                            padding: '4px 8px', background: '#F8FAFC', border: '1px solid #E2E8F0',
+                            borderRadius: 4, color: '#475569', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
                             transition: 'all 0.2s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#EFF6FF'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#F8FAFC'}
                         >
                           📈 Growth Pitch
                         </button>
@@ -1348,12 +2016,12 @@ const DeckBuilder = () => {
                           onClick={() => handleRefineCommentary('Emphasize defensive hedges, risk parameters, low volatility, and wealth preservation.')}
                           disabled={isRefining}
                           style={{
-                            padding: '4px 8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: 4, color: '#cbd5e1', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                            padding: '4px 8px', background: '#F8FAFC', border: '1px solid #E2E8F0',
+                            borderRadius: 4, color: '#475569', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
                             transition: 'all 0.2s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#EFF6FF'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#F8FAFC'}
                         >
                           🛡️ Capital Shield
                         </button>
@@ -1361,12 +2029,12 @@ const DeckBuilder = () => {
                           onClick={() => handleRefineCommentary('Format the content as a neat list of bullet points using Unicode dot marks.')}
                           disabled={isRefining}
                           style={{
-                            padding: '4px 8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: 4, color: '#cbd5e1', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                            padding: '4px 8px', background: '#F8FAFC', border: '1px solid #E2E8F0',
+                            borderRadius: 4, color: '#475569', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
                             transition: 'all 0.2s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#EFF6FF'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#F8FAFC'}
                         >
                           🎯 Bullet Points
                         </button>
@@ -1380,8 +2048,8 @@ const DeckBuilder = () => {
                           value={refineInstruction}
                           onChange={(e) => setRefineInstruction(e.target.value)}
                           style={{
-                            flex: 1, background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: 4, color: '#fff', padding: '5px 8px', fontSize: 10.5,
+                            flex: 1, background: '#FFFFFF', border: '1px solid #E2E8F0',
+                            borderRadius: 4, color: '#0F172A', padding: '5px 8px', fontSize: 10.5,
                           }}
                         />
                         <button
@@ -1422,8 +2090,8 @@ const DeckBuilder = () => {
                         value={customSlidePrompt}
                         onChange={(e) => setCustomSlidePrompt(e.target.value)}
                         style={{
-                          width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 6, color: '#fff', padding: '6px 8px', fontSize: 11, lineHeight: 1.4,
+                          width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                          borderRadius: 6, color: '#0F172A', padding: '6px 8px', fontSize: 11, lineHeight: 1.4,
                           boxSizing: 'border-box', resize: 'none', marginBottom: 8
                         }}
                       />
@@ -1451,8 +2119,8 @@ const DeckBuilder = () => {
                       value={selectedSlide?.notes || ''}
                       onChange={(e) => updateSlideNotes(e.target.value)}
                       style={{
-                        width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, lineHeight: 1.5,
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 6, color: '#0F172A', padding: '8px 12px', fontSize: 12, lineHeight: 1.5,
                         boxSizing: 'border-box',
                       }}
                     />
@@ -1482,8 +2150,8 @@ const DeckBuilder = () => {
                       value={themePrompt}
                       onChange={(e) => setThemePrompt(e.target.value)}
                       style={{
-                        width: '100%', background: 'rgba(2,6,23,0.7)', border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 6, color: '#e2e8f0', padding: '7px 10px', fontSize: 11,
+                        width: '100%', background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.15)',
+                        borderRadius: 6, color: '#4C1D95', padding: '7px 10px', fontSize: 11,
                         lineHeight: 1.4, boxSizing: 'border-box', resize: 'none', marginBottom: 8,
                         fontFamily: 'inherit',
                       }}
@@ -1512,13 +2180,13 @@ const DeckBuilder = () => {
                       <div style={{
                         marginTop: 12,
                         padding: 12,
-                        background: 'rgba(0,0,0,0.3)',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
                         borderRadius: 8,
                         animation: 'fadeIn 0.3s ease',
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>{generatedTheme.themeName}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#0F172A' }}>{generatedTheme.themeName}</span>
                           <span style={{ fontSize: 9, color: '#38bdf8', fontWeight: 600 }}>✦ AI Generated</span>
                         </div>
 
@@ -1603,7 +2271,7 @@ const DeckBuilder = () => {
                           }}
                         >
                           <span style={{ fontSize: 10, fontWeight: 600, color: branding.themeName === theme.themeName ? '#a78bfa' : '#fff' }}>
-                            {theme.themeName.split(' ')[0]}
+                            {theme.themeName.split(' (')[0]}
                           </span>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <div style={{ width: 10, height: 10, borderRadius: 2, background: theme.primaryColor }} />
@@ -1622,8 +2290,8 @@ const DeckBuilder = () => {
                       value={branding.clientName}
                       onChange={(e) => setBranding({ ...branding, clientName: e.target.value })}
                       style={{
-                        width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, boxSizing: 'border-box',
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 6, color: '#0F172A', padding: '8px 12px', fontSize: 12, boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -1635,8 +2303,8 @@ const DeckBuilder = () => {
                       value={branding.footerText}
                       onChange={(e) => setBranding({ ...branding, footerText: e.target.value })}
                       style={{
-                        width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, boxSizing: 'border-box',
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 6, color: '#0F172A', padding: '8px 12px', fontSize: 12, boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -1647,8 +2315,8 @@ const DeckBuilder = () => {
                       value={branding.logoPreset}
                       onChange={(e) => setBranding({ ...branding, logoPreset: e.target.value })}
                       style={{
-                        width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, cursor: 'pointer', marginBottom: 8,
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 6, color: '#0F172A', padding: '8px 12px', fontSize: 12, cursor: 'pointer', marginBottom: 8,
                       }}
                     >
                       <option value="standard">Standard — Deckora</option>
@@ -1659,8 +2327,8 @@ const DeckBuilder = () => {
                       value={branding.fontFamily || 'Outfit'}
                       onChange={(e) => setBranding({ ...branding, fontFamily: e.target.value })}
                       style={{
-                        width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 12, cursor: 'pointer',
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 6, color: '#0F172A', padding: '8px 12px', fontSize: 12, cursor: 'pointer',
                       }}
                     >
                       <option value="Outfit">Outfit (Modern Wealth)</option>
@@ -1735,8 +2403,8 @@ const DeckBuilder = () => {
                         value={branding.logoUrl && !branding.logoUrl.startsWith('data:') ? branding.logoUrl : ''}
                         onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value })}
                         style={{
-                          width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 11, boxSizing: 'border-box',
+                          width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                          borderRadius: 6, color: '#0F172A', padding: '8px 12px', fontSize: 11, boxSizing: 'border-box',
                         }}
                       />
 
@@ -1767,8 +2435,8 @@ const DeckBuilder = () => {
                       value={selectedPersona}
                       onChange={(e) => setPersona(e.target.value as any)}
                       style={{
-                        width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, color: '#fff', padding: '10px 12px', fontSize: 12, cursor: 'pointer',
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 6, color: '#0F172A', padding: '10px 12px', fontSize: 12, cursor: 'pointer',
                       }}
                     >
                       <option value="young-investor">Young Investor (High Risk)</option>
@@ -1793,7 +2461,7 @@ const DeckBuilder = () => {
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: '#020617',
+          background: '#FFFFFF',
           zIndex: 9999,
           display: 'flex',
           flexDirection: 'column',
@@ -1922,7 +2590,7 @@ const DeckBuilder = () => {
                 value={autoplaySpeed}
                 onChange={(e) => setAutoplaySpeed(Number(e.target.value))}
                 style={{
-                  background: '#020617',
+                  background: '#FFFFFF',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   color: '#cbd5e1',
                   padding: '5px 8px',

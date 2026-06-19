@@ -30,7 +30,7 @@ const MarketSectorHeatmap = () => {
     <div className="glass-card" style={{ padding: '24px 28px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.02em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Activity size={18} style={{ color: '#38bdf8' }} />
             Sector Performance Heatmap
           </h2>
@@ -42,8 +42,8 @@ const MarketSectorHeatmap = () => {
         <div className="grid-sectors" style={{ minHeight: 130 }}>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="animate-pulse" style={{
-              background: 'rgba(15,23,42,0.4)',
-              border: '1px solid rgba(255,255,255,0.03)',
+              background: '#F1F5F9',
+              border: '1px solid #E2E8F0',
               borderRadius: 10,
               height: 60,
             }} />

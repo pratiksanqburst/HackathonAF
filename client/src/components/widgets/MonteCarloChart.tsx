@@ -38,7 +38,7 @@ const MonteCarloChart = () => {
     <div className="glass-card" style={{ padding: '24px 28px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>
             Monte Carlo Simulation
           </h2>
           <p style={{ fontSize: 12, color: '#64748b' }}>1,000 simulated paths to target goal</p>
@@ -67,16 +67,16 @@ const MonteCarloChart = () => {
           <XAxis dataKey="year" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
           <YAxis tickFormatter={(v) => formatValue(v)} tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} width={60} />
           <Tooltip 
-            contentStyle={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 10 }}
-            itemStyle={{ fontSize: 12 }}
-            labelStyle={{ color: '#94a3b8', marginBottom: 4 }}
+            contentStyle={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10 }}
+            itemStyle={{ fontSize: 12, color: '#334155' }}
+            labelStyle={{ color: '#64748B', marginBottom: 4 }}
             formatter={(value: number) => formatValue(value)}
           />
-          <Area type="monotone" dataKey="best" stroke="rgba(255,255,255,0.1)" fill="none" strokeWidth={1} />
-          <Area type="monotone" dataKey="optimistic" stroke="rgba(255,255,255,0.2)" fill="none" strokeWidth={1} />
+          <Area type="monotone" dataKey="best" stroke="rgba(148,163,184,0.4)" fill="none" strokeWidth={1} />
+          <Area type="monotone" dataKey="optimistic" stroke="rgba(148,163,184,0.6)" fill="none" strokeWidth={1} />
           <Area type="monotone" dataKey="median" stroke={color} strokeWidth={3} fill="url(#mcGradient)" />
-          <Area type="monotone" dataKey="conservative" stroke="rgba(255,255,255,0.2)" fill="none" strokeWidth={1} />
-          <Area type="monotone" dataKey="pessimistic" stroke="rgba(255,255,255,0.1)" fill="none" strokeWidth={1} />
+          <Area type="monotone" dataKey="conservative" stroke="rgba(148,163,184,0.6)" fill="none" strokeWidth={1} />
+          <Area type="monotone" dataKey="pessimistic" stroke="rgba(148,163,184,0.4)" fill="none" strokeWidth={1} />
         </AreaChart>
       </ResponsiveContainer>
     </div>

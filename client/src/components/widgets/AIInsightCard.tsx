@@ -238,11 +238,12 @@ const AIInsightCard = () => {
 
 
   return (
-    <div className="glass-card" style={{
+    <div style={{
       padding: '24px 28px',
       background: `linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.8))`,
       border: `1px solid rgba(255,255,255,0.08)`,
       boxShadow: `0 12px 40px rgba(0,0,0,0.5)`,
+      borderRadius: 12,
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',

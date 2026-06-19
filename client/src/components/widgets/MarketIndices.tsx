@@ -22,7 +22,7 @@ const MarketIndices = () => {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', fontFamily: 'Outfit, sans-serif' }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', fontFamily: 'Outfit, sans-serif' }}>
               {item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             <span style={{

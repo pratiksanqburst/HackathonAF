@@ -27,7 +27,7 @@ const PortfolioMetrics = () => {
   }
 
   const getDrawdownColor = (val: number) => {
-    return Math.abs(val) > 20 ? '#f43f5e' : '#cbd5e1'
+    return Math.abs(val) > 20 ? '#DC2626' : '#475569'
   }
 
   const statItems = [
@@ -47,7 +47,7 @@ const PortfolioMetrics = () => {
       label: 'Beta', 
       value: metrics.beta.toFixed(2), 
       tooltip: 'Market correlation volatility factor', 
-      color: metrics.beta > 1.2 ? '#fbbf24' : '#cbd5e1'
+      color: metrics.beta > 1.2 ? '#D97706' : '#475569'
     },
     { 
       label: 'Volatility', 
@@ -72,7 +72,7 @@ const PortfolioMetrics = () => {
   return (
     <div className="glass-card" style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>
           Advanced Metrics
         </h2>
         {stressScenario && (
@@ -96,8 +96,8 @@ const PortfolioMetrics = () => {
       <div className="grid-stats">
         {statItems.map((stat, i) => (
           <div key={i} style={{
-            background: 'rgba(15,23,42,0.4)',
-            border: '1px solid rgba(255, 255, 255, 0.03)',
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
             borderRadius: 12,
             padding: '16px',
             transition: 'all 0.3s ease',
