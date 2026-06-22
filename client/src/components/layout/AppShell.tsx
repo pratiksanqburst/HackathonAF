@@ -69,9 +69,9 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
             <button
               onClick={() => {
                 // If we are on clients and a client details view is active, close details first
-                if (currentPage === 'clients' && window.location.hash.includes('?id=')) {
+                if (currentPage === 'clients' && window.location.search.includes('id=')) {
                   selectClient(null)
-                  window.location.hash = 'clients'
+                  window.history.pushState(null, '', '/clients')
                 } else {
                   window.history.back()
                 }
@@ -286,7 +286,7 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
         </header>
 
         {/* ── Content ── */}
-        <main ref={mainRef} style={{ flex: 1, padding: '36px 40px', overflowY: 'auto', overflowX: 'hidden' }}>
+        <main ref={mainRef} style={{ flex: 1, padding: currentPage === 'deck-builder' ? '16px 24px' : '36px 40px', overflowY: 'auto', overflowX: 'hidden' }}>
           {children}
         </main>
       </div>

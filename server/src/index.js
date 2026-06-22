@@ -21,9 +21,13 @@ if (gatewayEnabled) {
 
 const SYSTEM_PROMPT = `You are an elite AI financial advisor copilot for "AF Engage" by Alexander Forbes. Recommend solutions from three pillars: Retirement Solutions (RA, Living Annuity, Guaranteed Annuity), Investment Management (Unit Trust - Equity/Debt/Hybrid), Insurance & Risk (Life Insurance, Disability Insurance, Income Protection). Match recommendations to client life stage: Early Career (RA + Unit Trust Equity + Income Protection), Mid Career (Unit Trust Hybrid + Life/Disability Insurance), Pre-Retirement (capital consolidation), Retirement (Living Annuity + Guaranteed Annuity). Be premium, professional, and concise — max 4 sentences or 3 bullet points. No markdown headers or bold.`
 
-async function askGemini(prompt) {
+async function askGemini(prompt, options = {}) {
   if (!gatewayEnabled) return null
   try {
+    const selectedModel = options.model === 'pro' ? 'gemini-2.0-pro' : (options.model === 'flash' ? 'gemini-2.0-flash' : GEMINI_MODEL)
+    const activeSystemPrompt = options.systemPrompt || SYSTEM_PROMPT
+    const activeTemperature = typeof options.temperature === 'number' ? options.temperature : 0.7
+
     const response = await fetch(`${GATEWAY_URL}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -31,11 +35,11 @@ async function askGemini(prompt) {
         'Authorization': `Bearer ${GATEWAY_KEY}`,
       },
       body: JSON.stringify({
-        model: GEMINI_MODEL,
-        temperature: 0.7,
+        model: selectedModel,
+        temperature: activeTemperature,
         max_tokens: 512,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: activeSystemPrompt },
           { role: 'user',   content: prompt },
         ],
       }),
@@ -406,7 +410,7 @@ app.get('/api/simulation/montecarlo', (req, res) => {
 
 // POST /api/copilot/generate-commentary  ─── Real Gemini + mock fallback
 app.post('/api/copilot/generate-commentary', async (req, res) => {
-  const { slideType, persona, metrics, holdings, clientName, customPrompt } = req.body
+  const { slideType, persona, metrics, holdings, clientName, customPrompt, options } = req.body
   const client = clientName || 'Valued Partner'
 
   // ── Build a rich, data-aware prompt ───────────────────────────────────────
@@ -440,7 +444,7 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
   const prompt = slidePrompts[slideType] || slidePrompts.custom
 
   // ── Try Gemini first, fall back to mock ───────────────────────────────────
-  const aiDraft = await askGemini(prompt)
+  const aiDraft = await askGemini(prompt, options)
 
   if (aiDraft) {
     return res.json({ draft: aiDraft, source: 'gemini' })
@@ -465,7 +469,7 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
 
 // POST /api/copilot/generate-deck ─── Real Gemini + mock bulk generator
 app.post('/api/copilot/generate-deck', async (req, res) => {
-  const { deck = [], persona, metrics, holdings, clientName } = req.body
+  const { deck = [], persona, metrics, holdings, clientName, options } = req.body
   const client = clientName || 'Valued Partner'
   logActivity('deck_generate', 'Investment Slide Deck Generated', `Generated a ${deck.length}-slide wealth strategy presentation theme for ${client}.`, { clientName: client })
 
@@ -497,7 +501,7 @@ app.post('/api/copilot/generate-deck', async (req, res) => {
   try {
     const promises = deck.map(async (slide) => {
       const prompt = slidePrompts[slide.type] || slidePrompts.custom
-      const aiDraft = await askGemini(prompt)
+      const aiDraft = await askGemini(prompt, options)
       if (aiDraft) {
         return { id: slide.id, draft: aiDraft }
       }
@@ -534,9 +538,105 @@ app.post('/api/copilot/generate-deck', async (req, res) => {
   }
 })
 
+// POST /api/copilot/generate-custom-deck ─── custom layout and content generation via Gemini
+app.post('/api/copilot/generate-custom-deck', async (req, res) => {
+  const {
+    title,
+    description,
+    numSlides = 5,
+    presentationType,
+    audience,
+    tone,
+    notes,
+    options
+  } = req.body
+
+  const client = req.body.clientName || 'Valued Partner'
+  logActivity('deck_generate_custom', 'Custom Slide Deck Drafted', `Drafted a custom ${numSlides}-slide ${presentationType} presentation ("${title}") with tone: ${tone}.`)
+
+  const systemPrompt = `You are a professional wealth advisor presentation outline planner.
+You will generate a presentation deck structure based on the user's requirements.
+The output MUST be a valid JSON array of objects representing slides.
+Each slide object MUST have:
+- "type": one of "cover", "metrics", "holdings", "risk", "timeline", "montecarlo", "insights", "custom"
+- "title": a clear, descriptive title for the slide
+- "content": 2 to 4 bullet points separated by newlines, using the '•' character at the start of each bullet point. Ensure the bullets directly address the slide topic and description details.
+- "notes": short speaker notes / advisor notes for this slide
+
+Do NOT include any markdown code blocks, backticks, or other text outside the JSON array. Output exactly a JSON array.`
+
+  const userPrompt = `Generate a slide deck of exactly ${numSlides} slides based on this configuration:
+  Presentation Title: "${title}"
+  Main Topic/Description: "${description}"
+  Presentation Type: "${presentationType}"
+  Target Audience: "${audience}"
+  Tone: "${tone}"
+  Additional Notes/Instructions: "${notes || 'None'}"`
+
+  try {
+    const aiResponse = await askGemini(userPrompt, {
+      ...options,
+      systemPrompt: systemPrompt
+    })
+
+    let slides = []
+    if (aiResponse) {
+      try {
+        let cleanText = aiResponse.trim()
+        if (cleanText.startsWith('```json')) {
+          cleanText = cleanText.substring(7)
+        }
+        if (cleanText.startsWith('```')) {
+          cleanText = cleanText.substring(3)
+        }
+        if (cleanText.endsWith('```')) {
+          cleanText = cleanText.substring(0, cleanText.length - 3)
+        }
+        slides = JSON.parse(cleanText.trim())
+      } catch (err) {
+        console.error('Failed to parse Gemini custom deck JSON, using fallback structure', err)
+      }
+    }
+
+    if (!slides || slides.length === 0) {
+      slides = []
+      slides.push({
+        id: 'slide_cov_' + Math.random().toString(36).substring(2, 7),
+        type: 'cover',
+        title: title || 'Strategic Wealth Management',
+        content: `• Custom deck generated for target audience: ${audience}.\n• Overview of strategic client reviews and wealth allocation objectives.\n• Aligning goals with tax-efficient growth pillars.`,
+        notes: 'Welcome the client and set the presentation tone.'
+      })
+      for (let i = 1; i < numSlides; i++) {
+        const slideTypes = ['metrics', 'holdings', 'risk', 'timeline', 'insights']
+        const type = slideTypes[(i - 1) % slideTypes.length]
+        slides.push({
+          id: `slide_${type}_` + Math.random().toString(36).substring(2, 7),
+          type: type,
+          title: `Analysis Section ${i}: ${type.toUpperCase()}`,
+          content: `• Detailed analysis of ${description}.\n• Strategic alignment in accordance with a ${tone} delivery tone.\n• Focus on asset management rebalancing recommendations.`,
+          notes: `Presenter notes for slide ${i + 1}.`
+        })
+      }
+    } else {
+      slides = slides.map((s, idx) => ({
+        id: s.id || `slide_${s.type || 'custom'}_` + Math.random().toString(36).substring(2, 7) + `_${idx}`,
+        type: s.type || 'custom',
+        title: s.title || `Slide ${idx + 1}`,
+        content: s.content || '• Draft content generated by AI.',
+        notes: s.notes || ''
+      }))
+    }
+
+    res.json({ success: true, deck: slides })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to generate custom deck', detail: err.message })
+  }
+})
+
 // POST /api/copilot/chat  ─── Real conversational Gemini chat
 app.post('/api/copilot/chat', async (req, res) => {
-  const { message, persona, portfolioValue, metrics, stressScenario } = req.body
+  const { message, persona, portfolioValue, metrics, stressScenario, options } = req.body
 
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'message is required' })
@@ -562,7 +662,7 @@ Advisor question: "${message}"
 
 Respond in 2-4 sentences with specific, data-aware advisory insight. Frame your answer within our three pillars (Retirement Solutions, Investment Management, Insurance & Protection). Recommend specific relevant vehicles (e.g. Unit Trusts, Retirement/Living Annuity, or Income Protection) matching the client's current situation. Be direct and confident. Do not use markdown headers.`
 
-  const aiReply = await askGemini(prompt)
+  const aiReply = await askGemini(prompt, options)
 
   if (aiReply) {
     return res.json({ reply: aiReply, source: 'gemini' })
@@ -681,7 +781,7 @@ Keep the response to 3 sentences max. Do not use markdown headers.`
 
 // POST /api/copilot/refine-commentary
 app.post('/api/copilot/refine-commentary', async (req, res) => {
-  const { text, instruction, persona, holdings, metrics } = req.body
+  const { text, instruction, persona, holdings, metrics, options } = req.body
 
   const metricsCtx = metrics
     ? `Sharpe: ${metrics.sharpe}, Alpha: ${metrics.alpha}%, Volatility: ${metrics.volatility}%`
@@ -706,7 +806,7 @@ If the instruction specifies a tone, change the tone but keep the factual data.
 If the instruction specifies bullet points, format the result as 2 or 3 clean, bulleted lines using '•'.
 Do not write any introductory text, titles, or concluding remarks. Just output the revised text. Keep it professional and under 4 sentences.`
 
-  const aiReply = await askGemini(prompt)
+  const aiReply = await askGemini(prompt, options)
 
   if (aiReply) {
     return res.json({ draft: aiReply, source: 'gemini' })
@@ -721,7 +821,7 @@ Do not write any introductory text, titles, or concluding remarks. Just output t
 
 // POST /api/copilot/generate-theme
 app.post('/api/copilot/generate-theme', async (req, res) => {
-  const { description, clientName, persona } = req.body
+  const { description, clientName, persona, options } = req.body
 
   if (!description || !description.trim()) {
     return res.status(400).json({ error: 'description is required' })
@@ -750,7 +850,7 @@ Respond ONLY with a valid JSON object (no markdown, no explanation) in this exac
   "rationale": "<1 sentence explaining why these colors match the description>"
 }`
 
-  const aiReply = await askGemini(prompt)
+  const aiReply = await askGemini(prompt, options)
 
   if (aiReply) {
     try {

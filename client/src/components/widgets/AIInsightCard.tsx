@@ -69,7 +69,7 @@ const AIInsightCard = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [isTyping, setIsTyping] = useState<boolean>(false)
   const [inputValue, setInputValue] = useState<string>('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
 
   const welcomeMessages: Record<string, string> = {
     'young-investor': "Hello! I am your AI Strategic Advisor Copilot. I've completed a full audit of the **Young Growth** portfolio. Equities are currently at 85%, primarily weighted in high-beta tech. What market event would you like to stress-test today?",
@@ -89,9 +89,11 @@ const AIInsightCard = () => {
     ])
   }, [selectedPersona])
 
-  // Scroll to bottom on new message
+  // Scroll to bottom of chat container on new message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+    }
   }, [messages, isTyping])
 
   const colorMap: Record<string, string> = {
@@ -308,17 +310,20 @@ const AIInsightCard = () => {
       </div>
 
       {/* Chat Messages Frame */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        maxHeight: 280,
-        paddingRight: 8,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        marginBottom: 16,
-        scrollbarWidth: 'thin',
-      }}>
+      <div 
+        ref={chatContainerRef}
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          maxHeight: 280,
+          paddingRight: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          marginBottom: 16,
+          scrollbarWidth: 'thin',
+        }}
+      >
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -446,7 +451,6 @@ const AIInsightCard = () => {
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Quick Action Simulation Options */}

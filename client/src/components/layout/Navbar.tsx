@@ -57,7 +57,7 @@ const Navbar = () => {
               letterSpacing: '-0.03em',
               whiteSpace: 'nowrap',
             }}>
-              Deckora
+              Decora
             </h1>
             <p className="navbar-brand-sub" style={{ fontSize: 10, color: '#475569', margin: 0, marginTop: 1, whiteSpace: 'nowrap' }}>
               AI-Powered Deck Storytelling

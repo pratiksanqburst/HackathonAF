@@ -93,7 +93,7 @@ const Dashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>Deckora</span>
+            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>Decora</span>
             <ChevronRight size={12} color="#CBD5E1" />
             <span style={{ fontSize: 11, color: '#2563EB', fontWeight: 700 }}>Portfolio Analytics</span>
           </div>
@@ -201,7 +201,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <span style={{ fontSize: 11, color: '#CBD5E1', fontWeight: 500 }}>
-          Deckora Platform&nbsp;&middot;&nbsp;AI-Powered Wealth Presentation
+          Decora Platform&nbsp;&middot;&nbsp;AI-Powered Wealth Presentation
         </span>
         <span style={{ fontSize: 11, color: '#CBD5E1', fontWeight: 500 }}>
           Not financial advice&nbsp;&middot;&nbsp;For licensed advisor use only

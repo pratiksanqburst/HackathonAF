@@ -111,7 +111,7 @@ export interface Client {
   createdAt?: string
 }
 
-export type AppPage = 'home' | 'clients' | 'deck-builder' | 'analytics' | 'templates' | 'activity'
+export type AppPage = 'home' | 'clients' | 'deck-builder' | 'analytics' | 'templates' | 'activity' | 'settings' | 'deck-config'
 
 export interface RecentDeck {
   id: string
@@ -230,9 +230,9 @@ const getStoredUser = (): User | null => {
 
 const getInitialPage = (): AppPage => {
   if (typeof window === 'undefined') return 'home'
-  const hash = window.location.hash || '#home'
-  const pagePart = hash.split('?')[0].replace('#', '')
-  const validPages: AppPage[] = ['home', 'clients', 'deck-builder', 'analytics', 'templates', 'activity']
+  const path = window.location.pathname === '/' ? '/home' : window.location.pathname
+  const pagePart = path.split('?')[0].replace('/', '')
+  const validPages: AppPage[] = ['home', 'clients', 'deck-builder', 'analytics', 'templates', 'activity', 'settings', 'deck-config']
   return validPages.includes(pagePart as AppPage) ? (pagePart as AppPage) : 'home'
 }
 
@@ -249,17 +249,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentView: 'dashboard',
   currentPage: getInitialPage(),
   setCurrentPage: (page) => {
-    // Sync with hash
+    // Sync with path routing (no hash)
+    let newPath = `/${page}`
     if (page === 'clients') {
       const selected = get().selectedClient
       if (selected) {
-        window.location.hash = `clients?id=${selected.id}`
-      } else {
-        window.location.hash = 'clients'
+        newPath = `/clients?id=${selected.id}`
       }
-    } else {
-      window.location.hash = page
+    } else if (page === 'home') {
+      newPath = '/'
     }
+    window.history.pushState(null, '', newPath)
     set({ currentPage: page })
   },
   recentDecks: [
@@ -287,11 +287,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (client) {
       get().setPersona(client.persona)
       if (get().currentPage === 'clients') {
-        window.location.hash = `clients?id=${client.id}`
+        window.history.pushState(null, '', `/clients?id=${client.id}`)
       }
     } else {
-      if (get().currentPage === 'clients' && window.location.hash.includes('?id=')) {
-        window.location.hash = 'clients'
+      if (get().currentPage === 'clients' && window.location.search.includes('id=')) {
+        window.history.pushState(null, '', '/clients')
       }
     }
   },

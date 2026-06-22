@@ -721,7 +721,7 @@ const ClientsPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Deckora</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Decora</span>
             <ChevronRight size={12} color="#CBD5E1" />
             <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>Clients Directory</span>
           </div>

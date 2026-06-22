@@ -28,6 +28,7 @@ interface SlideTemplateProps {
   notes?: string
   customTitle?: string
   customContent?: string
+  overrides?: any
 }
 
 // Helper to get logo icon / image based on preset
@@ -38,7 +39,7 @@ export const SlideLogo: React.FC<{ branding: BrandingConfig }> = ({ branding }) 
   }
 
   // Fallback / Preset logos
-  const text = branding.logoPreset === 'premium' ? 'ApexWealth' : 'Deckora'
+  const text = branding.logoPreset === 'premium' ? 'ApexWealth' : 'Decora'
   
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -143,14 +144,14 @@ export const SlideShell: React.FC<{
         color: 'rgba(255, 255, 255, 0.3)',
       }}>
         <span>{branding.footerText || 'Confidential · For internal client use only'}</span>
-        <span>Deckora Wealth Analytics</span>
+        <span>Decora Wealth Analytics</span>
       </div>
     </div>
   )
 }
 
 // 1. Cover Slide
-export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle, customContent }) => {
+export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle, customContent, overrides = {} }) => {
   return (
     <SlideShell branding={branding} showHeader={false}>
       <div style={{
@@ -188,7 +189,7 @@ export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}>
-          {customTitle || (branding.clientName ? `Strategic Wealth Presentation` : 'Investment Strategy & Review')}
+          {customTitle || overrides.title || (branding.clientName ? `Strategic Wealth Presentation` : 'Investment Strategy & Review')}
         </h1>
 
         <p style={{
@@ -197,7 +198,7 @@ export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle
           margin: '0 0 24px 0',
           fontWeight: 400,
         }}>
-          {customContent || 'Custom Portfolio Analytics & Projected Outcomes'}
+          {customContent || overrides.subtitle || 'Custom Portfolio Analytics & Projected Outcomes'}
         </p>
 
         <div style={{
@@ -211,12 +212,12 @@ export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle
         <div style={{ display: 'flex', gap: 24 }}>
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Client</div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{branding.clientName || 'Valued Partner'}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{overrides.clientName || branding.clientName || 'Valued Partner'}</div>
           </div>
           <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{overrides.date || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>
           </div>
         </div>
       </div>
@@ -225,17 +226,17 @@ export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle
 }
 
 // 2. Metrics Slide
-export const MetricsSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent }) => {
+export const MetricsSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent, overrides = {} }) => {
   const m = personaData.metrics
   if (!m) return <SlideShell branding={branding}><div>Loading metrics...</div></SlideShell>
 
   const items = [
-    { label: 'Sharpe Ratio', value: m.sharpe, desc: 'Risk-adjusted return', icon: Zap },
-    { label: 'Alpha', value: `${m.alpha}%`, desc: 'Excess return vs benchmark', icon: TrendingUp },
-    { label: 'Beta', value: m.beta, desc: 'Market sensitivity', icon: BarChart3 },
-    { label: 'Volatility', value: `${m.volatility}%`, desc: 'Annualized price spread', icon: Activity },
-    { label: 'YTD Return', value: `${m.ytdReturn}%`, desc: 'Calendar year performance', icon: LineChart },
-    { label: 'Max Drawdown', value: `${m.maxDrawdown}%`, desc: 'Peak-to-trough risk', icon: TrendingDown },
+    { label: 'Sharpe Ratio', value: overrides.sharpe !== undefined ? overrides.sharpe : m.sharpe, desc: 'Risk-adjusted return', icon: Zap },
+    { label: 'Alpha', value: overrides.alpha !== undefined ? `${overrides.alpha}%` : `${m.alpha}%`, desc: 'Excess return vs benchmark', icon: TrendingUp },
+    { label: 'Beta', value: overrides.beta !== undefined ? overrides.beta : m.beta, desc: 'Market sensitivity', icon: BarChart3 },
+    { label: 'Volatility', value: overrides.volatility !== undefined ? `${overrides.volatility}%` : `${m.volatility}%`, desc: 'Annualized price spread', icon: Activity },
+    { label: 'YTD Return', value: overrides.ytdReturn !== undefined ? `${overrides.ytdReturn}%` : `${m.ytdReturn}%`, desc: 'Calendar year performance', icon: LineChart },
+    { label: 'Max Drawdown', value: overrides.maxDrawdown !== undefined ? `${overrides.maxDrawdown}%` : `${m.maxDrawdown}%`, desc: 'Peak-to-trough risk', icon: TrendingDown },
   ]
 
   return (
@@ -286,11 +287,12 @@ export const MetricsSlide: React.FC<SlideTemplateProps> = ({ branding, personaDa
 }
 
 // 3. Holdings Slide
-export const HoldingsSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent }) => {
+export const HoldingsSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent, overrides = {} }) => {
   const h = personaData.holdings
-  const totalValue = h.reduce((sum, item) => sum + item.value, 0)
+  const customizedHoldings: HoldingData[] = overrides.holdings || h
+  const totalValue = customizedHoldings.reduce((sum, item) => sum + item.value, 0)
   
-  const chartData = h.map(item => ({
+  const chartData = customizedHoldings.map(item => ({
     name: item.symbol,
     value: item.value
   }))
@@ -351,7 +353,7 @@ export const HoldingsSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
               </tr>
             </thead>
             <tbody>
-              {h.map((row, idx) => (
+              {customizedHoldings.map((row, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                   <td style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[idx % COLORS.length], flexShrink: 0 }} />
@@ -360,7 +362,7 @@ export const HoldingsSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
                       <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 90 }}>{row.name}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '4px 6px', textAlign: 'right', color: '#fff' }}>{((row.value / totalValue) * 100).toFixed(1)}%</td>
+                  <td style={{ padding: '4px 6px', textAlign: 'right', color: '#fff' }}>{totalValue > 0 ? ((row.value / totalValue) * 100).toFixed(1) : '0.0'}%</td>
                   <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600, color: '#fff' }}>${row.value.toLocaleString()}</td>
                   <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600, color: row.pnlPct >= 0 ? '#34d399' : '#f87171' }}>
                     {row.pnlPct >= 0 ? '+' : ''}{row.pnlPct}%
@@ -375,12 +377,11 @@ export const HoldingsSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
   )
 }
 
-// 4. Risk & Allocation Slide
-export const RiskSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent }) => {
+export const RiskSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent, overrides = {} }) => {
   const p = personaData.portfolio
   
   // Custom allocation details based on persona
-  const allocations = personaData.persona === 'young-investor' 
+  const baseAllocations = personaData.persona === 'young-investor' 
     ? [
         { asset: 'US Equities (Tech focus)', pct: 60, color: branding.primaryColor },
         { asset: 'Int\'l Equities (Growth)', pct: 20, color: branding.secondaryColor },
@@ -400,6 +401,13 @@ export const RiskSlide: React.FC<SlideTemplateProps> = ({ branding, personaData,
         { asset: 'Long-Term Treasury Bonds', pct: 40, color: '#a78bfa' },
         { asset: 'Cash Reserves', pct: 10, color: '#94a3b8' },
       ]
+
+  const allocations = [
+    { ...baseAllocations[0], pct: overrides.risk_pct1 !== undefined ? overrides.risk_pct1 : baseAllocations[0].pct },
+    { ...baseAllocations[1], pct: overrides.risk_pct2 !== undefined ? overrides.risk_pct2 : baseAllocations[1].pct },
+    { ...baseAllocations[2], pct: overrides.risk_pct3 !== undefined ? overrides.risk_pct3 : baseAllocations[2].pct },
+    { ...baseAllocations[3], pct: overrides.risk_pct4 !== undefined ? overrides.risk_pct4 : baseAllocations[3].pct },
+  ]
 
   return (
     <SlideShell branding={branding}>
@@ -502,13 +510,14 @@ export const TimelineSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
 }
 
 // 6. Monte Carlo Slide
-export const MonteCarloSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent }) => {
+export const MonteCarloSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent, overrides = {} }) => {
   const mc = personaData.monteCarlo
   if (!mc) return <SlideShell branding={branding}><div>Loading Monte Carlo...</div></SlideShell>
 
   // Estimate some path endpoints for the presentation summary table
   const pData = mc.chartData
   const lastRow = pData[pData.length - 1] || {}
+  const displayProbability = overrides.probability !== undefined ? overrides.probability : mc.probability
 
   return (
     <SlideShell branding={branding} customContent={customContent}>
@@ -529,10 +538,10 @@ export const MonteCarloSlide: React.FC<SlideTemplateProps> = ({ branding, person
             <div style={{
               fontSize: 36,
               fontWeight: 800,
-              color: mc.probability >= 70 ? '#34d399' : '#fbbf24',
+              color: displayProbability >= 70 ? '#34d399' : '#fbbf24',
               margin: '8px 0',
             }}>
-              {mc.probability}%
+              {displayProbability}%
             </div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
               Current: ${mc.current.toLocaleString()} ➜ Target: ${mc.goal.toLocaleString()}

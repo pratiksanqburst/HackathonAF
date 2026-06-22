@@ -60,11 +60,14 @@ const Sidebar: React.FC = () => {
           />
           <div>
             <div style={{
-              fontSize: 15,
-              fontWeight: 800,
-              color: '#0F172A',
-              letterSpacing: '0.04em',
+              fontSize: 17,
+              fontWeight: 900,
+              background: 'linear-gradient(135deg, #0F172A 0%, #2563EB 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '0.06em',
               lineHeight: 1.2,
+              fontFamily: "'Outfit', sans-serif",
             }}>DECORA</div>
             <div style={{
               fontSize: 9,
@@ -73,6 +76,7 @@ const Sidebar: React.FC = () => {
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               marginTop: 2,
+              fontFamily: "'Inter', sans-serif",
             }}>INTELLIGENT WORKSPACE</div>
           </div>
         </div>
@@ -146,9 +150,8 @@ const Sidebar: React.FC = () => {
 
       {/* ── Bottom Section ── */}
       <div style={{ padding: '16px 12px 20px 12px', borderTop: '1px solid #F1F5F9' }}>
-        {/* Settings */}
         <button
-          onClick={() => setCurrentPage('activity')}
+          onClick={() => setCurrentPage('settings')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -156,9 +159,9 @@ const Sidebar: React.FC = () => {
             padding: '10px 14px',
             borderRadius: 10,
             fontSize: 13.5,
-            fontWeight: 500,
-            color: '#64748B',
-            background: 'transparent',
+            fontWeight: 600,
+            color: currentPage === 'settings' ? '#2563EB' : '#64748B',
+            background: currentPage === 'settings' ? 'rgba(37, 99, 235, 0.06)' : 'transparent',
             border: 'none',
             cursor: 'pointer',
             textAlign: 'left',
@@ -166,10 +169,20 @@ const Sidebar: React.FC = () => {
             marginBottom: 8,
             transition: 'all 0.15s',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#0F172A' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748B' }}
+          onMouseEnter={(e) => {
+            if (currentPage !== 'settings') {
+              e.currentTarget.style.background = '#F8FAFC'
+              e.currentTarget.style.color = '#0F172A'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (currentPage !== 'settings') {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = '#64748B'
+            }
+          }}
         >
-          <Settings size={17} color="#94A3B8" />
+          <Settings size={17} color={currentPage === 'settings' ? '#2563EB' : '#94A3B8'} />
           Settings
         </button>
 

@@ -7,6 +7,10 @@ import AppShell from './components/layout/AppShell'
 import HomePage from './pages/HomePage'
 import ClientsPage from './pages/ClientsPage'
 import ActivityPage from './pages/ActivityPage'
+import SettingsPage from './pages/SettingsPage'
+
+import TemplatesPage from './pages/TemplatesPage'
+import DeckConfigPage from './pages/DeckConfigPage'
 
 // Core Application Entry View Routing
 function App() {
@@ -61,19 +65,19 @@ function App() {
     }
   }, [])
 
-  // Hash Routing Sync Listener
+  // Path Routing Sync Listener
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash || '#home'
-      const pagePart = hash.split('?')[0].replace('#', '')
-      const queryPart = hash.split('?')[1] || ''
+    const handlePathChange = () => {
+      const path = window.location.pathname === '/' ? '/home' : window.location.pathname
+      const pagePart = path.split('?')[0].replace('/', '')
+      const queryPart = window.location.search || ''
       
-      const validPages = ['home', 'clients', 'deck-builder', 'analytics', 'templates', 'activity']
+      const validPages = ['home', 'clients', 'deck-builder', 'analytics', 'templates', 'activity', 'settings', 'deck-config']
       const page = validPages.includes(pagePart) ? pagePart : 'home'
       
       const store = useAppStore.getState()
       
-      // Update selected client if hash has query id
+      // Update selected client if search has query id
       if (page === 'clients' && queryPart) {
         const params = new URLSearchParams(queryPart)
         const clientId = params.get('id')
@@ -107,10 +111,26 @@ function App() {
     }
 
     // Run initially to set starting state
-    handleHashChange()
+    handlePathChange()
 
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
+    window.addEventListener('popstate', handlePathChange)
+
+    const originalPushState = window.history.pushState
+    window.history.pushState = function(...args) {
+      originalPushState.apply(this, args)
+      handlePathChange()
+    }
+    const originalReplaceState = window.history.replaceState
+    window.history.replaceState = function(...args) {
+      originalReplaceState.apply(this, args)
+      handlePathChange()
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePathChange)
+      window.history.pushState = originalPushState
+      window.history.replaceState = originalReplaceState
+    }
   }, [])
 
   // Serve mock Google login popup stand-alone route
@@ -152,18 +172,25 @@ function App() {
     case 'templates':
       return (
         <AppShell>
-          <div style={{ padding: 24, background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>Template Library</h3>
-            <p style={{ color: '#64748B', fontSize: 14 }}>
-              Explore and apply pre-configured presentation templates for retirement, education, and growth portfolios.
-            </p>
-          </div>
+          <TemplatesPage />
         </AppShell>
       )
     case 'activity':
       return (
         <AppShell>
           <ActivityPage />
+        </AppShell>
+      )
+    case 'settings':
+      return (
+        <AppShell>
+          <SettingsPage />
+        </AppShell>
+      )
+    case 'deck-config':
+      return (
+        <AppShell>
+          <DeckConfigPage />
         </AppShell>
       )
     default:

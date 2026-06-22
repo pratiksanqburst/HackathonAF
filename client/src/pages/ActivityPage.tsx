@@ -140,7 +140,7 @@ const ActivityPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>Deckora</span>
+            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>Decora</span>
             <span style={{ fontSize: 11, color: '#CBD5E1' }}>/</span>
             <span style={{ fontSize: 11, color: '#2563EB', fontWeight: 700 }}>Activity Logs</span>
           </div>
