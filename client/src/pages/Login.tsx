@@ -237,7 +237,7 @@ const Login = () => {
 
         {/* Footer */}
         <div style={{ marginTop: 64, fontSize: 11, color: '#334155', animation: 'fadeUp 0.6s ease 0.3s both' }}>
-          © 2026 Alexander Forbes Group. Secure & Encrypted.
+          © 2026 Wealth Advisory Group. Secure & Encrypted.
         </div>
       </div>
 

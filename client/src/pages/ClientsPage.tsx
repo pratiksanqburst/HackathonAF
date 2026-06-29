@@ -29,7 +29,8 @@ import {
   ArrowLeft,
   Calendar,
   Settings,
-  Edit2
+  Edit2,
+  Palette
 } from 'lucide-react'
 
 // Recharts imports for beautiful client performance graph
@@ -54,13 +55,17 @@ const ClientsPage: React.FC = () => {
     clientsError,
     fetchClients,
     addClient,
+    updateClient,
     deleteClient,
     uploadClientLogo,
     uploadClientPortfolio,
     selectClient, 
     setPersona,
     setCurrentPage, 
-    setDeckBuilderStep
+    setDeckBuilderStep,
+    updateClientBrandColors,
+    uploadClientDataSheet,
+    recentDecks
   } = useAppStore()
 
   const [searchTerm, setSearchTerm] = useState('')
@@ -70,6 +75,7 @@ const ClientsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'investments' | 'insights' | 'planner'>('overview')
 
   // Form states (Add)
+  const [clientType, setClientType] = useState<'individual' | 'organizational'>('individual')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [contact, setContact] = useState('')
@@ -92,6 +98,71 @@ const ClientsPage: React.FC = () => {
   const portfolioInputRef = useRef<HTMLInputElement>(null)
 
   const selectedClient = useAppStore(state => state.selectedClient)
+
+  // Function to extract brand colors from uploaded logo using hidden canvas
+  const extractColorsFromLogoUrl = (logoUrl: string): Promise<string[]> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.crossOrigin = "Anonymous"
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            resolve(['#4F46E5', '#06B6D4', '#10B981'])
+            return
+          }
+          canvas.width = 50
+          canvas.height = 50
+          ctx.drawImage(img, 0, 0, 50, 50)
+          const data = ctx.getImageData(0, 0, 50, 50).data
+          
+          const colorCounts: { [key: string]: number } = {}
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i]
+            const g = data[i+1]
+            const b = data[i+2]
+            const a = data[i+3]
+            if (a < 120) continue // skip transparent/near-transparent
+            
+            // Skip grayscale, white, black
+            const max = Math.max(r, g, b)
+            const min = Math.min(r, g, b)
+            if (max - min < 35) continue // skip gray
+            if (max > 240 && min > 240) continue // skip white
+            if (max < 35) continue // skip black
+            
+            const rgbHex = '#' + [r, g, b].map(x => {
+              const hex = x.toString(16)
+              return hex.length === 1 ? '0' + hex : hex
+            }).join('').toUpperCase()
+            
+            colorCounts[rgbHex] = (colorCounts[rgbHex] || 0) + 1
+          }
+          
+          const sortedColors = Object.keys(colorCounts).sort((a, b) => colorCounts[b] - colorCounts[a])
+          if (sortedColors.length >= 3) {
+            resolve(sortedColors.slice(0, 5))
+          } else {
+            const defaults = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B']
+            const result = [...sortedColors]
+            for (const d of defaults) {
+              if (!result.includes(d) && result.length < 4) {
+                result.push(d)
+              }
+            }
+            resolve(result)
+          }
+        } catch (e) {
+          resolve(['#4F46E5', '#06B6D4', '#10B981'])
+        }
+      }
+      img.onerror = () => {
+        resolve(['#4F46E5', '#06B6D4', '#10B981'])
+      }
+      img.src = logoUrl.startsWith('http') ? logoUrl : window.location.origin + logoUrl
+    })
+  }
 
   useEffect(() => {
     fetchClients()
@@ -128,11 +199,22 @@ const ClientsPage: React.FC = () => {
         current: portfolioFile ? 0 : currentValue, 
         goal: goalValue,
         sharpe,
-        volatility
+        volatility,
+        clientType
       })
 
+      let finalLogoUrl = null
       if (logoFile) {
-        await uploadClientLogo(newClient.id, logoFile)
+        finalLogoUrl = await uploadClientLogo(newClient.id, logoFile)
+        // Automatically detect and suggest colors
+        try {
+          const colors = await extractColorsFromLogoUrl(finalLogoUrl)
+          if (colors && colors.length > 0) {
+            await updateClientBrandColors(newClient.id, colors)
+          }
+        } catch (colorErr) {
+          console.error('Failed to extract brand colors:', colorErr)
+        }
       }
 
       if (portfolioFile) {
@@ -153,6 +235,7 @@ const ClientsPage: React.FC = () => {
       setVolatility(12.5)
       setLogoFile(null)
       setPortfolioFile(null)
+      setClientType('individual')
       setShowAddModal(false)
       
       await fetchClients()
@@ -179,7 +262,17 @@ const ClientsPage: React.FC = () => {
 
   const handleQuickLogoUpload = async (clientId: string, file: File) => {
     try {
-      await uploadClientLogo(clientId, file)
+      const logoUrl = await uploadClientLogo(clientId, file)
+      await fetchClients()
+      // Suggest and save brand colors automatically
+      try {
+        const colors = await extractColorsFromLogoUrl(logoUrl)
+        if (colors && colors.length > 0) {
+          await updateClientBrandColors(clientId, colors)
+        }
+      } catch (colorErr) {
+        console.error('Failed to extract brand colors:', colorErr)
+      }
       await fetchClients()
       // Refresh current details cache
       const updated = clients.find(c => c.id === clientId)
@@ -409,63 +502,306 @@ const ClientsPage: React.FC = () => {
 
         {/* Tab Content Panels */}
         {activeTab === 'overview' && (
-          <div className="grid-2col">
-            {/* Portfolio Performance Area Chart */}
-            <div className="glass-card" style={{ padding: '24px' }}>
-              <div style={{ marginBottom: 18 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Portfolio Performance (12M)</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 24, alignItems: 'start' }}>
+            {/* Left Column: Performance & Decks */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* Portfolio Performance */}
+              <div className="glass-card" style={{ padding: '24px' }}>
+                <div style={{ marginBottom: 18 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Portfolio Performance (12M)</span>
+                </div>
+
+                <div style={{ width: '100%', height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={perfData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.12}/>
+                          <stop offset="95%" stopColor="var(--accent)" stopOpacity={0.0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                      <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis 
+                        stroke="var(--text-muted)" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} 
+                      />
+                      <Tooltip 
+                        formatter={(value: any) => [`$${value.toLocaleString()}`, 'Portfolio value']} 
+                        contentStyle={{ background: '#FFFFFF', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }} 
+                      />
+                      <Area type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
-              <div style={{ width: '100%', height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={perfData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.12}/>
-                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0.0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis 
-                      stroke="var(--text-muted)" 
-                      fontSize={10} 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} 
-                    />
-                    <Tooltip 
-                      formatter={(value: any) => [`$${value.toLocaleString()}`, 'Portfolio value']} 
-                      contentStyle={{ background: '#FFFFFF', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }} 
-                    />
-                    <Area type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+              {/* Decks/PPTs Created for Client */}
+              <div className="glass-card" style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Decks & Presentations</span>
+                  <button 
+                    onClick={() => handleSelectAndBuild(client)}
+                    className="btn-secondary" 
+                    style={{ padding: '4px 10px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <Plus size={11} /> New Deck
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {recentDecks.filter(deck => 
+                    deck.client.toLowerCase() === client.name.toLowerCase() ||
+                    deck.client.toLowerCase().includes(client.name.toLowerCase()) ||
+                    client.name.toLowerCase().includes(deck.client.toLowerCase())
+                  ).length > 0 ? (
+                    recentDecks.filter(deck => 
+                      deck.client.toLowerCase() === client.name.toLowerCase() ||
+                      deck.client.toLowerCase().includes(client.name.toLowerCase()) ||
+                      client.name.toLowerCase().includes(deck.client.toLowerCase())
+                    ).map((deck, idx) => (
+                      <div key={idx} className="deck-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#FAFBFD', border: '1px solid var(--border)', borderRadius: 10 }}>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(79, 70, 229, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4F46E5' }}>
+                            <FileText size={16} />
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>{deck.name}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{deck.type} &middot; {deck.modified}</span>
+                          </div>
+                        </div>
+                        <span className={`badge ${deck.status === 'Completed' ? 'badge-success' : 'badge-purple'}`} style={{ padding: '2px 8px', fontSize: 10 }}>
+                          {deck.status}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '36px', background: '#FAFBFD', border: '1px dashed var(--border)', borderRadius: 12, textAlign: 'center' }}>
+                      <FolderOpen size={24} style={{ margin: '0 auto 8px auto', color: 'var(--text-muted)' }} />
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>No Decks Created Yet</div>
+                      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+                        Create customizable investment strategies and branding-aligned presentations.
+                      </p>
+                      <button onClick={() => handleSelectAndBuild(client)} className="btn-primary" style={{ padding: '6px 12px', fontSize: 11.5 }}>
+                        Create Slide Deck
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Recent Activity Card */}
-            <div className="glass-card" style={{ padding: '24px' }}>
-              <div style={{ marginBottom: 18 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Recent Activity</span>
-              </div>
+            {/* Right Column: Branding, Brand Colors, settings & Data Sheet */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* Branding Section */}
+              <div className="glass-card" style={{ padding: '24px' }}>
+                <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Palette size={16} color="var(--accent)" />
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Branding Settings & Colors</span>
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[
-                  { title: 'Q1 2026 Portfolio Review created', time: '2 days ago' },
-                  { title: 'Risk Assessment exported to PDF', time: '1 week ago' },
-                  { title: 'Portfolio allocation updated', time: '2 weeks ago' },
-                  { title: 'Investment Strategy Update created', time: '3 weeks ago' },
-                  { title: 'Q1 strategy review meeting completed', time: '1 month ago' }
-                ].map((act, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', marginTop: 5, flexShrink: 0 }} />
+                {/* Logo Section */}
+                <div style={{ marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>Client Corporate Logo</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    {client.logo ? (
+                      <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={client.logo} alt={`${client.name} logo`} style={{ width: '85%', height: '85%', objectFit: 'contain' }} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 64, height: 64, borderRadius: 10, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontWeight: 800, fontSize: 24 }}>
+                        {client.name.charAt(0)}
+                      </div>
+                    )}
                     <div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>{act.title}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginTop: 2 }}>{act.time}</span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        id={`logo-upload-${client.id}`}
+                        style={{ display: 'none' }}
+                        onChange={async e => {
+                          const file = e.target.files?.[0]
+                          if (file) await handleQuickLogoUpload(client.id, file)
+                        }}
+                      />
+                      <button 
+                        onClick={() => document.getElementById(`logo-upload-${client.id}`)?.click()} 
+                        className="btn-secondary" 
+                        style={{ padding: '6px 12px', fontSize: 12, borderRadius: 8 }}
+                      >
+                        <Upload size={12} style={{ marginRight: 4 }} /> Upload Logo
+                      </button>
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>JPEG, PNG up to 5MB</p>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Brand Colors */}
+                <div style={{ marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>Brand Color Palette</label>
+                  
+                  {/* List of current colors */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                    {client.brandColors && client.brandColors.length > 0 ? (
+                      client.brandColors.map((color, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 20 }}>
+                          <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, display: 'inline-block', border: '1px solid rgba(0,0,0,0.1)' }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'monospace', color: 'var(--text-primary)' }}>{color}</span>
+                          <button 
+                            onClick={async () => {
+                              const newColors = client.brandColors!.filter((_, i) => i !== idx)
+                              await updateClientBrandColors(client.id, newColors)
+                              await fetchClients()
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0 2px', fontSize: 11, display: 'flex', alignItems: 'center' }}
+                            title="Remove color"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic' }}>No custom brand colors defined.</span>
+                    )}
+                  </div>
+
+                  {/* Add Brand Color picker */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input 
+                        type="color" 
+                        id={`color-picker-${client.id}`}
+                        defaultValue="#4F46E5"
+                        style={{ border: 'none', padding: 0, width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', background: 'transparent' }}
+                      />
+                      <button 
+                        onClick={async () => {
+                          const picker = document.getElementById(`color-picker-${client.id}`) as HTMLInputElement
+                          if (picker) {
+                            const newColors = [...(client.brandColors || []), picker.value]
+                            await updateClientBrandColors(client.id, newColors)
+                            await fetchClients()
+                          }
+                        }}
+                        className="btn-secondary" 
+                        style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6 }}
+                      >
+                        Add Color
+                      </button>
+                    </div>
+
+                    {client.logo && (
+                      <button
+                        onClick={async () => {
+                          const colors = await extractColorsFromLogoUrl(client.logo!)
+                          if (colors && colors.length > 0) {
+                            await updateClientBrandColors(client.id, colors)
+                            await fetchClients()
+                          }
+                        }}
+                        className="btn-secondary"
+                        style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--accent)' }}
+                      >
+                        <Sparkles size={11} /> Auto-Detect
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Branding Settings */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>Branding Settings</label>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 500 }}>
+                      <input type="checkbox" defaultChecked style={{ borderRadius: 4, borderColor: 'var(--border)' }} />
+                      Apply logo to title and summary slides
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 500 }}>
+                      <input type="checkbox" defaultChecked style={{ borderRadius: 4, borderColor: 'var(--border)' }} />
+                      Use custom brand colors as primary accents
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 500 }}>
+                      <input type="checkbox" style={{ borderRadius: 4, borderColor: 'var(--border)' }} />
+                      Lock deck design layouts to client templates
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Sheet Upload Section */}
+              <div className="glass-card" style={{ padding: '24px' }}>
+                <div style={{ marginBottom: 12 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Data Sheet Upload</span>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
+                    Upload supporting financial files, portfolio statements or notes (PDF, Excel, CSV) for this client.
+                  </p>
+                </div>
+
+                {client.dataSheet ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, marginBottom: 14 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', overflow: 'hidden' }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16A34A', flexShrink: 0 }}>
+                        <FileText size={14} />
+                      </div>
+                      <a 
+                        href={client.dataSheet} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        style={{ fontSize: 12, fontWeight: 600, color: '#16A34A', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}
+                        title="Open uploaded data sheet"
+                      >
+                        {client.dataSheet.split('/').pop()}
+                      </a>
+                    </div>
+                    <button 
+                      onClick={async () => {
+                        const updated = await updateClient(client.id, { dataSheet: null })
+                        setSelectedClientDetails(updated)
+                        await fetchClients()
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ padding: '16px', background: '#FAFBFD', border: '1px dashed var(--border)', borderRadius: 10, textAlign: 'center', marginBottom: 14 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>No data sheet uploaded yet</span>
+                  </div>
+                )}
+
+                <div>
+                  <input 
+                    type="file" 
+                    id={`datasheet-upload-${client.id}`}
+                    accept=".pdf,.xlsx,.xls,.csv"
+                    style={{ display: 'none' }}
+                    onChange={async e => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        try {
+                          await uploadClientDataSheet(client.id, file)
+                          await fetchClients()
+                          const updated = clients.find(c => c.id === client.id)
+                          if (updated) setSelectedClientDetails(updated)
+                        } catch (err: any) {
+                          alert(`Data sheet upload failed: ${err.message}`)
+                        }
+                      }
+                    }}
+                  />
+                  <button 
+                    onClick={() => document.getElementById(`datasheet-upload-${client.id}`)?.click()}
+                    className="btn-secondary" 
+                    style={{ width: '100%', padding: '8px 12px', fontSize: 12, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    <Upload size={13} /> {client.dataSheet ? 'Replace Data Sheet' : 'Upload Data Sheet'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -641,60 +977,178 @@ const ClientsPage: React.FC = () => {
             justifyContent: 'center',
             zIndex: 1000
           }}>
-            {/* Simple edit form dialog */}
-            <div className="glass-card" style={{ background: '#FFFFFF', borderRadius: 20, width: '90%', maxWidth: 520, padding: 24, boxShadow: 'var(--shadow-xl)' }}>
+            <div className="glass-card" style={{
+              background: '#FFFFFF',
+              borderRadius: 20,
+              width: '90%',
+              maxWidth: 600,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: 24,
+              boxShadow: 'var(--shadow-xl)',
+              animation: 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800 }}>Edit Profile: {showEditModal.name}</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 800 }}>Edit Client Profile: {showEditModal.name}</h3>
                 <button onClick={() => setShowEditModal(null)} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--text-muted)', cursor: 'pointer' }}>&times;</button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+                {/* Client Type Dropdown */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Full Name</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Client Type</label>
+                  <select 
+                    value={showEditModal.clientType || 'individual'} 
+                    onChange={e => setShowEditModal({ ...showEditModal, clientType: e.target.value as 'individual' | 'organizational' })}
+                    style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                  >
+                    <option value="individual">Individual Client</option>
+                    <option value="organizational">Organizational Client</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  {/* Name field (Label changes based on type) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      {showEditModal.clientType === 'organizational' ? 'Organization Name' : 'Full Name'}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={showEditModal.name} 
+                      onChange={e => setShowEditModal({ ...showEditModal, name: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+
+                  {/* Company Name */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Company / Trust Name</label>
+                    <input 
+                      type="text" 
+                      value={showEditModal.company || ''} 
+                      onChange={e => setShowEditModal({ ...showEditModal, company: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Email Address</label>
+                    <input 
+                      type="email" 
+                      value={showEditModal.email || ''} 
+                      onChange={e => setShowEditModal({ ...showEditModal, email: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+
+                  {/* Contact Number */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Contact Phone</label>
+                    <input 
+                      type="text" 
+                      value={showEditModal.contact || ''} 
+                      onChange={e => setShowEditModal({ ...showEditModal, contact: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+
+                  {/* Client Age */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Age</label>
+                    <input 
+                      type="number" 
+                      value={showEditModal.age} 
+                      onChange={e => setShowEditModal({ ...showEditModal, age: parseInt(e.target.value, 10) || 40 })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+
+                  {/* Strategy Persona */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Strategy Persona</label>
+                    <select 
+                      value={showEditModal.persona} 
+                      onChange={e => setShowEditModal({ ...showEditModal, persona: e.target.value as Persona })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    >
+                      <option value="young-investor">Growth (Aggressive Tech)</option>
+                      <option value="family-planner">Balanced (Education/Family)</option>
+                      <option value="retirement-client">Conservative (Retired)</option>
+                    </select>
+                  </div>
+
+                  {/* Portfolio Assets ($) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Portfolio Assets ($)</label>
+                    <input 
+                      type="number" 
+                      value={showEditModal.current} 
+                      onChange={e => setShowEditModal({ ...showEditModal, current: parseFloat(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+
+                  {/* Target Goal */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Target Goal ($)</label>
+                    <input 
+                      type="number" 
+                      value={showEditModal.goal} 
+                      onChange={e => setShowEditModal({ ...showEditModal, goal: parseFloat(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+
+                  {/* Sharpe Ratio */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Sharpe Ratio</label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      value={showEditModal.sharpe} 
+                      onChange={e => setShowEditModal({ ...showEditModal, sharpe: parseFloat(e.target.value) || 1.45 })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+
+                  {/* Volatility */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Volatility (%)</label>
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      value={showEditModal.volatility} 
+                      onChange={e => setShowEditModal({ ...showEditModal, volatility: parseFloat(e.target.value) || 12.0 })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
+                    />
+                  </div>
+                </div>
+
+                {/* HQ / Residential Address */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    {showEditModal.clientType === 'organizational' ? 'HQ/Business Address' : 'Residential Address'}
+                  </label>
                   <input 
                     type="text" 
-                    value={showEditModal.name} 
-                    onChange={e => setShowEditModal({ ...showEditModal, name: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13 }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Email</label>
-                  <input 
-                    type="email" 
-                    value={showEditModal.email || ''} 
-                    onChange={e => setShowEditModal({ ...showEditModal, email: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13 }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Company Name</label>
-                  <input 
-                    type="text" 
-                    value={showEditModal.company || ''} 
-                    onChange={e => setShowEditModal({ ...showEditModal, company: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13 }}
+                    value={showEditModal.address || ''} 
+                    onChange={e => setShowEditModal({ ...showEditModal, address: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, background: '#FAFBFD' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 18 }}>
                 <button onClick={() => setShowEditModal(null)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: 12.5, borderRadius: 8 }}>Cancel</button>
                 <button 
                   onClick={async () => {
-                    const { addClient, ...updatePayload } = useAppStore.getState()
                     try {
-                      // Perform edit save via PUT api
-                      const res = await fetch(`/api/clients/${showEditModal.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(showEditModal)
-                      })
-                      if (res.ok) {
-                        await fetchClients()
-                        setSelectedClientDetails(showEditModal)
-                        setShowEditModal(null)
-                      }
+                      const updated = await updateClient(showEditModal.id, showEditModal)
+                      setSelectedClientDetails(updated)
+                      await fetchClients()
+                      setShowEditModal(null)
                     } catch (err: any) {
                       alert(`Save failed: ${err.message}`)
                     }
@@ -734,14 +1188,6 @@ const ClientsPage: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <button
-            onClick={downloadCsvTemplate}
-            className="btn-secondary"
-            style={{ padding: '8px 16px', fontSize: 13, borderRadius: 10 }}
-          >
-            <Download size={14} /> Download Template
-          </button>
-
           <button
             onClick={() => setShowAddModal(true)}
             className="btn-primary"
@@ -981,8 +1427,8 @@ const ClientsPage: React.FC = () => {
                   <UserPlus size={16} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Add Client</h3>
-                  <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontWeight: 500, marginTop: 1 }}>Set up a client profile and configure portfolio targets</p>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Add New Client</h3>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontWeight: 500, marginTop: 1 }}>Select a profile type and customize wealth goal metrics</p>
                 </div>
               </div>
               <button 
@@ -993,138 +1439,221 @@ const ClientsPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Client Type Toggle Tabs */}
+            <div style={{ display: 'flex', background: '#F8FAFC', padding: '6px', margin: '16px 24px 0 24px', borderRadius: 10, border: '1px solid var(--border)' }}>
+              <button
+                type="button"
+                onClick={() => setClientType('individual')}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  fontSize: 12.5,
+                  fontWeight: clientType === 'individual' ? 700 : 500,
+                  color: clientType === 'individual' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: clientType === 'individual' ? '#FFFFFF' : 'transparent',
+                  border: 'none',
+                  boxShadow: clientType === 'individual' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Individual Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setClientType('organizational')}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  fontSize: 12.5,
+                  fontWeight: clientType === 'organizational' ? 700 : 500,
+                  color: clientType === 'organizational' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: clientType === 'organizational' ? '#FFFFFF' : 'transparent',
+                  border: 'none',
+                  boxShadow: clientType === 'organizational' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Organizational / Trust
+              </button>
+            </div>
+
             <form onSubmit={handleCreateClient} style={{ padding: '24px' }}>
-              
-              {/* Profile Details */}
+              {/* Profile Details (Conditional based on clientType) */}
               <div style={{ marginBottom: 24 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 14 }}>
-                  1. Profile Details
+                  1. Profile Details ({clientType === 'individual' ? 'Individual Onboarding' : 'Organizational Onboarding'})
                 </span>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Full Name *</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="e.g. Sipho Khumalo" 
-                      value={name} 
-                      onChange={e => setName(e.target.value)}
-                      style={{ 
-                        width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
-                        background: '#FAFBFD', color: 'var(--text-primary)', transition: 'all 0.15s ease'
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)' }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#FAFBFD'; e.currentTarget.style.boxShadow = 'none' }}
-                    />
-                  </div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Email Address</label>
-                    <input 
-                      type="email" 
-                      placeholder="e.g. sipho.k@email.com" 
-                      value={email} 
-                      onChange={e => setEmail(e.target.value)}
-                      style={{ 
-                        width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
-                        background: '#FAFBFD', color: 'var(--text-primary)', transition: 'all 0.15s ease'
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)' }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#FAFBFD'; e.currentTarget.style.boxShadow = 'none' }}
-                    />
-                  </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Contact Number</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. +27 82 555 1234" 
-                      value={contact} 
-                      onChange={e => setContact(e.target.value)}
-                      style={{ 
-                        width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
-                        background: '#FAFBFD', color: 'var(--text-primary)', transition: 'all 0.15s ease'
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)' }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#FAFBFD'; e.currentTarget.style.boxShadow = 'none' }}
-                    />
-                  </div>
+                {clientType === 'individual' ? (
+                  /* Individual Client Flow Form fields */
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Full Name *</label>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="e.g. Sipho Khumalo" 
+                        value={name} 
+                        onChange={e => setName(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Email Address</label>
+                      <input 
+                        type="email" 
+                        placeholder="e.g. sipho.k@email.com" 
+                        value={email} 
+                        onChange={e => setEmail(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Client Age</label>
-                    <input 
-                      type="number" 
-                      value={age} 
-                      onChange={e => setAge(parseInt(e.target.value, 10) || 40)}
-                      style={{ 
-                        width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
-                        background: '#FAFBFD', color: 'var(--text-primary)', transition: 'all 0.15s ease'
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)' }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#FAFBFD'; e.currentTarget.style.boxShadow = 'none' }}
-                    />
-                  </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Contact Phone</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. +27 82 555 1234" 
+                        value={contact} 
+                        onChange={e => setContact(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
 
-                  <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Residential Address</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. 102 Melrose Arch, Johannesburg" 
-                      value={address} 
-                      onChange={e => setAddress(e.target.value)}
-                      style={{ 
-                        width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
-                        background: '#FAFBFD', color: 'var(--text-primary)', transition: 'all 0.15s ease'
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)' }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#FAFBFD'; e.currentTarget.style.boxShadow = 'none' }}
-                    />
-                  </div>
-                </div>
-              </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Client Age</label>
+                      <input 
+                        type="number" 
+                        value={age} 
+                        onChange={e => setAge(parseInt(e.target.value, 10) || 40)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
 
-              {/* Corporate details */}
-              <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 18 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 14 }}>
-                  2. Corporate & Logo Branding
-                </span>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Company / Trust Name</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Khumalo Holdings" 
-                      value={company} 
-                      onChange={e => setCompany(e.target.value)}
-                      style={{ 
-                        width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
-                        background: '#FAFBFD', color: 'var(--text-primary)', transition: 'all 0.15s ease'
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)' }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#FAFBFD'; e.currentTarget.style.boxShadow = 'none' }}
-                    />
+                    <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Residential Address</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. 102 Melrose Arch, Johannesburg" 
+                        value={address} 
+                        onChange={e => setAddress(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
                   </div>
+                ) : (
+                  /* Organizational Client Flow Form fields */
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Organization Name *</label>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="e.g. Khumalo Trust / Apex Capital" 
+                        value={name} 
+                        onChange={e => setName(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Company Logo</label>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={e => setLogoFile(e.target.files?.[0] || null)}
-                      style={{ 
-                        fontSize: 12, color: 'var(--text-secondary)', padding: '6px 0'
-                      }}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Registered Company / Legal Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Khumalo Holdings PTY Ltd" 
+                        value={company} 
+                        onChange={e => setCompany(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Corporate Email Address</label>
+                      <input 
+                        type="email" 
+                        placeholder="e.g. corporate@apexcap.com" 
+                        value={email} 
+                        onChange={e => setEmail(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Primary Contact Person / Phone</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Sipho (Partner) / +27 11 400 9000" 
+                        value={contact} 
+                        onChange={e => setContact(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>HQ / Business Address</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Suite 404, Sandton Towers, Johannesburg" 
+                        value={address} 
+                        onChange={e => setAddress(e.target.value)}
+                        style={{ 
+                          width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, outline: 'none',
+                          background: '#FAFBFD', color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
+
+                    {/* Logo upload direct field for organizational */}
+                    <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 5, background: '#FAFBFD', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Corporate Logo Asset</label>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={e => setLogoFile(e.target.files?.[0] || null)}
+                        style={{ fontSize: 12, color: 'var(--text-secondary)' }}
+                      />
+                      <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Used to auto-detect brand colors and brand presentation decks.</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Portfolio & Custom Holdings */}
               <div style={{ marginBottom: 28, borderTop: '1px solid var(--border)', paddingTop: 18 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 14 }}>
-                  3. Portfolio Customization
+                  2. Portfolio Customization
                 </span>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>

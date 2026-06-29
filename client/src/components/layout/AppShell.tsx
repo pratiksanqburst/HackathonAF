@@ -176,14 +176,44 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
                   {/* Dropdown Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 18px 12px 18px', borderBottom: '1px solid #F1F5F9' }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>Notifications</span>
-                    {unreadCount > 0 && (
-                      <button 
-                        onClick={handleMarkAllRead}
-                        style={{ background: 'none', border: 'none', fontSize: 11, fontWeight: 700, color: '#2563EB', cursor: 'pointer', padding: 0 }}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {unreadCount > 0 && (
+                        <button 
+                          onClick={handleMarkAllRead}
+                          style={{ background: 'none', border: 'none', fontSize: 11, fontWeight: 700, color: '#2563EB', cursor: 'pointer', padding: 0 }}
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setShowNotifications(false)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '2px 4px',
+                          color: '#94A3B8',
+                          fontSize: 16,
+                          lineHeight: 1,
+                          borderRadius: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'color 0.15s, background 0.15s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#475569'
+                          e.currentTarget.style.background = '#F1F5F9'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#94A3B8'
+                          e.currentTarget.style.background = 'none'
+                        }}
+                        title="Close"
                       >
-                        Mark all as read
+                        ✕
                       </button>
-                    )}
+                    </div>
                   </div>
 
                   {/* Dropdown Items */}

@@ -1,30 +1,63 @@
 import React, { useState } from 'react'
-import { Search, Plus, ArrowRight, Eye, Edit2, ArrowLeft, GripVertical, Trash2, CheckCircle2, Sparkles, X, Check } from 'lucide-react'
+import { exportTwoPotPPTX } from '../utils/twoPotExport'
+import { Search, Plus, ArrowRight, Eye, Edit2, ArrowLeft, GripVertical, Trash2, X, Check, Download } from 'lucide-react'
 import { useAppStore, SlideItem } from '../store/useAppStore'
 import { SHARED_PRESET_TEMPLATES, PresetTemplateData, TemplateSlideOutline } from '../data/presetTemplates'
 
 type View = 'list' | 'detail'
 
 const CATEGORY_LABELS: Record<string, string> = {
-  all: 'All Templates',
+  all: 'All',
   performance: 'Performance',
   planning: 'Planning',
   risk: 'Risk',
   strategy: 'Strategy',
 }
 
-const TemplatesPage: React.FC = () => {
-  const { setDeck, setSelectedSlideId, setCurrentPage } = useAppStore()
+// Classic monogram icon — no emojis
+const TemplateMonogram: React.FC<{ color: string; letter: string; size?: number }> = ({ color, letter, size = 40 }) => (
+  <div style={{
+    width: size, height: size, borderRadius: 10,
+    background: `${color}12`,
+    border: `1px solid ${color}30`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  }}>
+    <span style={{ fontSize: size * 0.4, fontWeight: 800, color, fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.02em' }}>
+      {letter}
+    </span>
+  </div>
+)
 
+const CATEGORY_MONOGRAMS: Record<string, string> = {
+  performance: 'Pf',
+  planning: 'Pl',
+  risk: 'Rk',
+  strategy: 'St',
+}
+
+const TemplatesPage: React.FC = () => {
+  const { setDeck, setSelectedSlideId, setCurrentPage, setDeckBuilderStep, setSelectedTemplate } = useAppStore()
   const [view, setView] = useState<View>('list')
   const [activeTemplate, setActiveTemplate] = useState<PresetTemplateData | null>(null)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
-
-  // Editable slides state for detail view
   const [editSlides, setEditSlides] = useState<TemplateSlideOutline[]>([])
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  const handleTwoPotDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDownloadingId('two-pot-advisory')
+    try {
+      await exportTwoPotPPTX()
+    } catch (err) {
+      console.error('Two-Pot PPT export failed', err)
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   const filtered = SHARED_PRESET_TEMPLATES.filter(t => {
     const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase())
@@ -54,11 +87,6 @@ const TemplatesPage: React.FC = () => {
     setCurrentPage('deck-builder')
   }
 
-  const handleSaveSlides = () => {
-    setSavedMsg(true)
-    setTimeout(() => setSavedMsg(false), 2500)
-  }
-
   const moveSlide = (from: number, to: number) => {
     const arr = [...editSlides]
     const [item] = arr.splice(from, 1)
@@ -67,44 +95,56 @@ const TemplatesPage: React.FC = () => {
   }
 
   const deleteSlide = (idx: number) => setEditSlides(prev => prev.filter((_, i) => i !== idx))
-
-  const addSlide = () => {
-    setEditSlides(prev => [...prev, { type: 'custom', title: 'New Slide', desc: 'Click to edit this slide content.' }])
-  }
+  const addSlide = () => setEditSlides(prev => [...prev, { type: 'custom', title: 'New Slide', desc: 'Click to edit.' }])
 
   // ── LIST VIEW ──
   if (view === 'list') return (
-    <div style={{ animation: 'fadeIn 0.3s ease', fontFamily: "'Inter', sans-serif", paddingBottom: 60 }}>
+    <div style={{ fontFamily: "'Outfit', 'Inter', sans-serif", paddingBottom: 60, animation: 'fadeIn 0.3s ease' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>Decora</span>
-            <span style={{ fontSize: 11, color: '#CBD5E1' }}>/</span>
-            <span style={{ fontSize: 11, color: '#2563EB', fontWeight: 700 }}>Templates</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Presentation Library</span>
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.025em', margin: '0 0 4px 0' }}>Presentation Templates</h1>
-          <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Select a template to view, edit its slides, and launch it in the Deck Builder.</p>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', margin: '0 0 6px 0' }}>Templates</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, fontWeight: 400 }}>
+            Select, customise, and launch professional presentation templates.
+          </p>
         </div>
         <button
           onClick={() => setCurrentPage('deck-config')}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 700, color: '#FFFFFF', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)', whiteSpace: 'nowrap' }}
-          onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
-          onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
+          className="btn-primary"
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', borderRadius: 10 }}
         >
-          <Plus size={15} /> Create Custom Deck
+          <Plus size={14} /> Custom Deck
         </button>
       </div>
 
-      {/* Search + Filter */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF5', borderRadius: 16, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 28, boxShadow: '0 1px 4px rgba(15,23,42,0.01)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: '8px 12px' }}>
-          <Search size={16} color="#94A3B8" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates..." style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: '#0F172A' }} />
+      {/* Search + Filter bar */}
+      <div className="glass-card" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px' }}>
+          <Search size={14} color="var(--text-muted)" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search templates..."
+            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--text-primary)', fontFamily: 'inherit' }}
+          />
+          {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={13} /></button>}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
           {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-            <button key={key} onClick={() => setCategory(key)} style={{ padding: '7px 14px', borderRadius: 10, border: category === key ? '1px solid rgba(37,99,235,0.2)' : '1px solid #E2E8F0', background: category === key ? 'rgba(37,99,235,0.06)' : '#FFFFFF', color: category === key ? '#2563EB' : '#64748B', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+            <button
+              key={key}
+              onClick={() => setCategory(key)}
+              style={{
+                padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: category === key ? 'var(--accent)' : 'transparent',
+                color: category === key ? '#fff' : 'var(--text-secondary)',
+                fontSize: 12.5, fontWeight: 600, transition: 'all 0.15s',
+              }}
+            >
               {label}
             </button>
           ))}
@@ -113,45 +153,76 @@ const TemplatesPage: React.FC = () => {
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', border: '1px dashed #E2E8F0', borderRadius: 20 }}>
-          <p style={{ color: '#94A3B8', fontSize: 13 }}>No templates found.</p>
+        <div style={{ textAlign: 'center', padding: '80px 0', border: '1px dashed var(--border)', borderRadius: 16 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No templates match your search.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 20 }}>
           {filtered.map(t => (
-            <div key={t.id} style={{ background: '#FFFFFF', border: '1px solid #E8EDF5', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 14px rgba(15,23,42,0.02)', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s, box-shadow 0.2s' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(15,23,42,0.06)' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(15,23,42,0.02)' }}
+            <div
+              key={t.id}
+              className="glass-card"
+              style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default', padding: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
             >
-              {/* Color ribbon */}
-              <div style={{ height: 6, background: `linear-gradient(90deg, ${t.primaryColor}, ${t.color})` }} />
-              <div style={{ padding: 24, flex: 1 }}>
-                {/* Badges */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: t.color, background: `${t.color}15`, padding: '3px 9px', borderRadius: 6 }}>{t.category}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {t.badge && <span style={{ fontSize: 10, fontWeight: 700, color: '#D97706', background: '#FFFBEB', border: '1px solid #FCD34D', padding: '2px 7px', borderRadius: 5 }}>⭐ {t.badge}</span>}
-                    <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>{t.slidesCount} slides</span>
+              {/* Left accent strip as top border */}
+              <div style={{ height: 4, background: `linear-gradient(90deg, ${t.color}, ${t.secondaryColor || t.color}80)` }} />
+
+              <div style={{ padding: '22px 24px', flex: 1 }}>
+                {/* Top row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <TemplateMonogram color={t.color} letter={CATEGORY_MONOGRAMS[t.category] || t.name.charAt(0)} />
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: t.color, marginBottom: 2 }}>{t.category}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{t.slidesCount} slides</div>
+                    </div>
                   </div>
+                  {t.badge && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: '#92400E',
+                      background: '#FEF3C7', border: '1px solid #FDE68A',
+                      padding: '3px 9px', borderRadius: 20, letterSpacing: '0.02em',
+                    }}>
+                      {t.badge}
+                    </span>
+                  )}
                 </div>
-                <div style={{ fontSize: 22, marginBottom: 8 }}>{t.icon}</div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0', letterSpacing: '-0.015em' }}>{t.name}</h3>
-                <p style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.5, margin: '0 0 16px 0' }}>{t.description}</p>
+
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>{t.name}</h3>
+                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 16px 0' }}>{t.description}</p>
+
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {t.tags.map((tag, i) => <span key={i} style={{ fontSize: 10.5, color: '#64748B', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6, fontWeight: 500 }}>#{tag}</span>)}
+                  {t.tags.map((tag, i) => (
+                    <span key={i} style={{ fontSize: 10.5, color: 'var(--text-muted)', background: 'var(--bg-secondary)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
+
               {/* Actions */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #F1F5F9', padding: '12px 20px', gap: 8 }}>
-                <button onClick={() => openDetail(t)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 9, color: '#475569', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: '8px 0', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#0F172A' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#475569' }}>
-                  <Eye size={13} /> View & Edit
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid var(--border)', padding: '12px 16px', gap: 8 }}>
+                <button
+                  onClick={() => openDetail(t)}
+                  className="btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, padding: '9px 0', borderRadius: 8 }}
+                >
+                  <Eye size={12} /> View & Edit
                 </button>
-                <button onClick={() => handleApply(t, t.slides)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: `${t.color}`, border: 'none', borderRadius: 9, color: '#FFFFFF', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', padding: '8px 0', transition: 'all 0.15s' }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
-                  Use Template <ArrowRight size={13} />
+                <button
+                  onClick={() => handleApply(t, t.slides)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    background: t.color, border: 'none', borderRadius: 8,
+                    color: '#FFFFFF', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', padding: '9px 0',
+                    transition: 'opacity 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                >
+                  Use Template <ArrowRight size={12} />
                 </button>
               </div>
             </div>
@@ -161,94 +232,104 @@ const TemplatesPage: React.FC = () => {
     </div>
   )
 
-  // ── DETAIL / EDIT VIEW ──
+  // ── DETAIL VIEW ──
   if (!activeTemplate) return null
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease', fontFamily: "'Inter', sans-serif", paddingBottom: 60 }}>
-      {/* Back + header */}
+    <div style={{ fontFamily: "'Outfit', 'Inter', sans-serif", paddingBottom: 60, animation: 'fadeIn 0.3s ease' }}>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
-        <button onClick={() => setView('list')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: '50%', border: '1px solid #E2E8F0', background: '#FFFFFF', cursor: 'pointer', color: '#64748B' }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
-          onMouseLeave={e => (e.currentTarget.style.background = '#FFFFFF')}>
-          <ArrowLeft size={16} />
+        <button
+          onClick={() => setView('list')}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0 }}
+        >
+          <ArrowLeft size={15} />
         </button>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500, cursor: 'pointer' }} onClick={() => setView('list')}>Templates</span>
-            <span style={{ fontSize: 11, color: '#CBD5E1' }}>/</span>
-            <span style={{ fontSize: 11, color: '#2563EB', fontWeight: 700 }}>{activeTemplate.name}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+            Templates / <span style={{ color: 'var(--accent)' }}>{activeTemplate.name}</span>
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>{activeTemplate.name}</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>{activeTemplate.name}</h1>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {savedMsg && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#10B981', fontWeight: 600, background: '#ECFDF5', padding: '8px 14px', borderRadius: 9, border: '1px solid #A7F3D0' }}>
-              <Check size={14} /> Saved
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#10B981', fontWeight: 600, background: 'rgba(16,185,129,0.08)', padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.2)' }}>
+              <Check size={13} /> Saved
             </span>
           )}
-          <button onClick={handleSaveSlides} style={{ padding: '9px 18px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+          <button onClick={() => { setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2200) }} className="btn-secondary" style={{ padding: '9px 16px', fontSize: 13, borderRadius: 9 }}>
             Save Changes
           </button>
-          <button onClick={() => handleApply(activeTemplate, editSlides)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', background: `linear-gradient(135deg, ${activeTemplate.color}, ${activeTemplate.primaryColor})`, border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#FFFFFF', cursor: 'pointer', boxShadow: `0 4px 12px ${activeTemplate.color}33` }}>
-            <Sparkles size={14} /> Use in Deck Builder
+          <button
+            onClick={() => handleApply(activeTemplate, editSlides)}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', background: activeTemplate.color, border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, color: '#FFFFFF', cursor: 'pointer' }}
+          >
+            Use in Deck Builder <ArrowRight size={14} />
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 28, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start' }}>
         {/* Slides Editor */}
-        <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF5', borderRadius: 20, padding: 24, boxShadow: '0 4px 12px rgba(15,23,42,0.01)' }}>
+        <div className="glass-card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0 }}>Slide Sequence <span style={{ fontWeight: 500, color: '#94A3B8', fontSize: 13 }}>({editSlides.length} slides)</span></h3>
-            <button onClick={addSlide} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)', borderRadius: 9, fontSize: 12.5, fontWeight: 600, color: '#2563EB', cursor: 'pointer' }}>
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px 0' }}>Slide Sequence</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{editSlides.length} slides · Drag to reorder</p>
+            </div>
+            <button onClick={addSlide} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, borderRadius: 8 }}>
               <Plus size={13} /> Add Slide
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {editSlides.map((slide, idx) => (
-              <div key={idx} style={{ border: editingIdx === idx ? '2px solid #2563EB' : '1px solid #E8EDF5', borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.15s', background: editingIdx === idx ? 'rgba(37,99,235,0.01)' : '#FAFAFA' }}>
-                {/* Slide row header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
-                  <GripVertical size={14} color="#CBD5E1" style={{ cursor: 'grab', flexShrink: 0 }} />
-                  <div style={{ width: 26, height: 26, borderRadius: 7, background: `${activeTemplate.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: activeTemplate.color, flexShrink: 0 }}>
+              <div
+                key={idx}
+                style={{
+                  border: editingIdx === idx ? `1.5px solid ${activeTemplate.color}` : '1px solid var(--border)',
+                  borderRadius: 12, overflow: 'hidden', background: editingIdx === idx ? `${activeTemplate.color}06` : 'var(--bg-secondary)',
+                  transition: 'border-color 0.15s',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+                  <GripVertical size={13} color="var(--text-muted)" style={{ cursor: 'grab', flexShrink: 0 }} />
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: `${activeTemplate.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: activeTemplate.color, flexShrink: 0 }}>
                     {idx + 1}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 1 }}>{slide.title}</div>
-                    <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{slide.type}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{slide.title}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{slide.type}</div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    {idx > 0 && <button onClick={() => moveSlide(idx, idx - 1)} style={{ background: '#F1F5F9', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 11, color: '#64748B' }}>↑</button>}
-                    {idx < editSlides.length - 1 && <button onClick={() => moveSlide(idx, idx + 1)} style={{ background: '#F1F5F9', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 11, color: '#64748B' }}>↓</button>}
-                    <button onClick={() => setEditingIdx(editingIdx === idx ? null : idx)} style={{ background: editingIdx === idx ? 'rgba(37,99,235,0.1)' : '#F1F5F9', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', color: editingIdx === idx ? '#2563EB' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                    {idx > 0 && <button onClick={() => moveSlide(idx, idx - 1)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)' }}>↑</button>}
+                    {idx < editSlides.length - 1 && <button onClick={() => moveSlide(idx, idx + 1)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)' }}>↓</button>}
+                    <button onClick={() => setEditingIdx(editingIdx === idx ? null : idx)} style={{ background: editingIdx === idx ? `${activeTemplate.color}20` : 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', color: editingIdx === idx ? activeTemplate.color : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Edit2 size={11} />
                     </button>
-                    <button onClick={() => deleteSlide(idx)} style={{ background: '#FEF2F2', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button onClick={() => deleteSlide(idx)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Trash2 size={11} />
                     </button>
                   </div>
                 </div>
 
-                {/* Inline edit panel */}
                 {editingIdx === idx && (
-                  <div style={{ padding: '0 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ padding: '0 14px 14px 14px', display: 'flex', flexDirection: 'column', gap: 10, borderTop: `1px solid ${activeTemplate.color}20` }}>
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Title</label>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</label>
                       <input value={slide.title} onChange={e => { const s = [...editSlides]; s[idx] = { ...s[idx], title: e.target.value }; setEditSlides(s) }}
-                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', boxSizing: 'border-box' }} />
+                        style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text-primary)', background: 'var(--bg-card)', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                     </div>
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Slide Type</label>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Slide Type</label>
                       <select value={slide.type} onChange={e => { const s = [...editSlides]; s[idx] = { ...s[idx], type: e.target.value as any }; setEditSlides(s) }}
-                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none' }}>
+                        style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text-primary)', background: 'var(--bg-card)', outline: 'none', fontFamily: 'inherit' }}>
                         {['cover', 'metrics', 'holdings', 'risk', 'timeline', 'montecarlo', 'insights', 'custom'].map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Description / Notes</label>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notes</label>
                       <textarea value={slide.desc} onChange={e => { const s = [...editSlides]; s[idx] = { ...s[idx], desc: e.target.value }; setEditSlides(s) }}
-                        rows={2} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                        rows={2} style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text-primary)', background: 'var(--bg-card)', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                     </div>
                   </div>
                 )}
@@ -257,40 +338,46 @@ const TemplatesPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right sidebar: template info + theme preview */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24 }}>
-          {/* Theme Preview */}
-          <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF5', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 12px rgba(15,23,42,0.02)' }}>
-            <div style={{ height: 120, background: `linear-gradient(135deg, ${activeTemplate.backgroundColor}, ${activeTemplate.primaryColor})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6, padding: 20 }}>
-              <div style={{ fontSize: 22 }}>{activeTemplate.icon}</div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>{activeTemplate.themeName}</span>
+        {/* Sidebar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 24 }}>
+          {/* Theme preview */}
+          <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ height: 100, background: `linear-gradient(135deg, ${activeTemplate.backgroundColor}, ${activeTemplate.primaryColor}80)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+              <TemplateMonogram color="#fff" letter={CATEGORY_MONOGRAMS[activeTemplate.category] || activeTemplate.name.charAt(0)} size={48} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.02em' }}>{activeTemplate.themeName}</span>
             </div>
-            <div style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#94A3B8', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Theme Colors</div>
+            <div style={{ padding: '14px 18px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Theme Colors</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {[activeTemplate.backgroundColor, activeTemplate.primaryColor, activeTemplate.color].map((c, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 18, height: 18, borderRadius: 4, background: c, border: '1px solid #E2E8F0' }} />
-                    <span style={{ fontSize: 10, color: '#94A3B8', fontFamily: 'monospace' }}>{c}</span>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: 4, background: c, border: '1px solid var(--border)' }} />
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{c}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 10 }}>Font: <strong style={{ color: '#475569' }}>{activeTemplate.fontFamily}</strong></div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>Font: <strong style={{ color: 'var(--text-secondary)' }}>{activeTemplate.fontFamily}</strong></div>
             </div>
           </div>
 
-          {/* Template info */}
-          <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF5', borderRadius: 20, padding: '20px', boxShadow: '0 4px 12px rgba(15,23,42,0.02)' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#94A3B8', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Template Info</div>
-            <p style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.6, margin: '0 0 12px 0' }}>{activeTemplate.description}</p>
+          {/* Description */}
+          <div className="glass-card" style={{ padding: '18px 20px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>About</div>
+            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.65, margin: '0 0 12px 0' }}>{activeTemplate.description}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              {activeTemplate.tags.map((tag, i) => <span key={i} style={{ fontSize: 10.5, color: '#64748B', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6, fontWeight: 500 }}>#{tag}</span>)}
+              {activeTemplate.tags.map((tag, i) => (
+                <span key={i} style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--bg-secondary)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>
+                  {tag}
+                </span>
+              ))}
             </div>
           </div>
 
-          {/* CTA */}
-          <button onClick={() => handleApply(activeTemplate, editSlides)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', background: `linear-gradient(135deg, ${activeTemplate.color}, ${activeTemplate.primaryColor})`, border: 'none', borderRadius: 14, fontSize: 14, fontWeight: 700, color: '#FFFFFF', cursor: 'pointer', boxShadow: `0 4px 16px ${activeTemplate.color}44` }}>
-            <Sparkles size={15} /> Use in Deck Builder <ArrowRight size={15} />
+          <button
+            onClick={() => handleApply(activeTemplate, editSlides)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 20px', background: activeTemplate.color, border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, color: '#FFFFFF', cursor: 'pointer' }}
+          >
+            Use in Deck Builder <ArrowRight size={15} />
           </button>
         </div>
       </div>

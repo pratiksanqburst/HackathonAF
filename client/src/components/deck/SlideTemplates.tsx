@@ -1,7 +1,7 @@
 import React from 'react'
 import { Persona, PortfolioData, HoldingData, IndexData, NewsData, MetricsData, MonteCarloData } from '../../store/useAppStore'
 import { Zap, TrendingUp, BarChart3, Activity, LineChart, TrendingDown, Brain, Sparkles, Layers } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from 'recharts'
 
 export interface BrandingConfig {
   themeName: string
@@ -14,6 +14,13 @@ export interface BrandingConfig {
   logoUrl?: string
   footerText: string
   fontFamily?: string
+  // Client-specific fields auto-populated from selected client
+  clientLogo?: string | null
+  clientCompany?: string
+  clientType?: 'individual' | 'organizational'
+  clientAge?: number
+  brandColors?: string[]
+  logoFit?: 'contain' | 'cover' | 'fill'
 }
 
 interface SlideTemplateProps {
@@ -33,9 +40,14 @@ interface SlideTemplateProps {
 
 // Helper to get logo icon / image based on preset
 export const SlideLogo: React.FC<{ branding: BrandingConfig }> = ({ branding }) => {
+  // Custom uploaded client logo
+  if (branding.clientLogo) {
+    return <img src={branding.clientLogo} alt="Client Logo" style={{ height: 28, maxWidth: 140, objectFit: branding.logoFit || 'contain', borderRadius: 4 }} />
+  }
+
   // Custom uploaded logo (base64 or URL)
   if (branding.logoPreset === 'custom' && branding.logoUrl) {
-    return <img src={branding.logoUrl} alt="Logo" style={{ height: 28, maxWidth: 140, objectFit: 'contain' }} />
+    return <img src={branding.logoUrl} alt="Logo" style={{ height: 28, maxWidth: 140, objectFit: branding.logoFit || 'contain' }} />
   }
 
   // Fallback / Preset logos
@@ -152,6 +164,10 @@ export const SlideShell: React.FC<{
 
 // 1. Cover Slide
 export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle, customContent, overrides = {} }) => {
+  const hasLogo = (branding.clientLogo || branding.logoUrl) && branding.logoPreset !== 'standard'
+  const displayName = overrides.clientName || branding.clientName || 'Valued Partner'
+  const isOrg = branding.clientType === 'organizational'
+
   return (
     <SlideShell branding={branding} showHeader={false}>
       <div style={{
@@ -175,30 +191,53 @@ export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle
           pointerEvents: 'none',
         }} />
 
-        <div style={{ marginBottom: 40 }}>
-          <SlideLogo branding={branding} />
+        {/* Client logo top-left if uploaded, else platform logo */}
+        <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 14 }}>
+          {branding.clientLogo ? (
+            <img
+              src={branding.clientLogo}
+              alt="Client Logo"
+              style={{ height: 36, maxWidth: 160, objectFit: branding.logoFit || 'contain', borderRadius: 4 }}
+            />
+          ) : (
+            <SlideLogo branding={branding} />
+          )}
+          {/* Client type badge */}
+          {branding.clientType && (
+            <span style={{
+              fontSize: 9,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              padding: '3px 8px',
+              borderRadius: 12,
+              background: `${branding.primaryColor}22`,
+              border: `1px solid ${branding.primaryColor}44`,
+              color: branding.primaryColor,
+            }}>
+              {isOrg ? 'Institutional' : 'Individual'}
+            </span>
+          )}
         </div>
 
         <h1 style={{
           fontSize: 36,
           fontWeight: 800,
-          margin: '0 0 12px 0',
+          margin: '0 0 10px 0',
           lineHeight: 1.15,
           letterSpacing: '-0.03em',
-          background: `linear-gradient(90deg, ${branding.textColor}, ${branding.primaryColor})`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+          color: branding.textColor,
         }}>
-          {customTitle || overrides.title || (branding.clientName ? `Strategic Wealth Presentation` : 'Investment Strategy & Review')}
+          {customTitle || overrides.title || (displayName ? `Strategic Wealth Presentation` : 'Investment Strategy & Review')}
         </h1>
 
         <p style={{
-          fontSize: 16,
+          fontSize: 15,
           color: 'rgba(255,255,255,0.7)',
-          margin: '0 0 24px 0',
+          margin: '0 0 20px 0',
           fontWeight: 400,
         }}>
-          {customContent || overrides.subtitle || 'Custom Portfolio Analytics & Projected Outcomes'}
+          {customContent || overrides.subtitle || `Prepared exclusively for ${displayName}`}
         </p>
 
         <div style={{
@@ -206,13 +245,16 @@ export const CoverSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle
           height: 3,
           background: branding.primaryColor,
           borderRadius: 2,
-          marginBottom: 40,
+          marginBottom: 28,
         }} />
 
         <div style={{ display: 'flex', gap: 24 }}>
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Client</div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{overrides.clientName || branding.clientName || 'Valued Partner'}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>{displayName}</div>
+            {isOrg && branding.clientCompany && branding.clientCompany !== displayName && (
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 1 }}>{branding.clientCompany}</div>
+            )}
           </div>
           <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
           <div>
@@ -306,8 +348,8 @@ export const HoldingsSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
       </h2>
       <div style={{ display: 'flex', gap: 20, flex: 1, alignItems: 'center', minHeight: 0 }}>
         {/* Left Side: Donut Chart */}
-        <div style={{ flex: 1, height: '170px', position: 'relative' }}>
-          <ResponsiveContainer width="100%" height="100%">
+        <div style={{ flex: 1, height: 170, minHeight: 170, position: 'relative' }}>
+          <ResponsiveContainer width="100%" height={170}>
             <PieChart>
               <Pie
                 data={chartData}
@@ -484,8 +526,8 @@ export const TimelineSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
         </div>
 
         {/* Growth Area Chart */}
-        <div style={{ flex: 1.6, height: '170px' }}>
-          <ResponsiveContainer width="100%" height="100%">
+        <div style={{ flex: 1.6, height: 170, minHeight: 170 }}>
+          <ResponsiveContainer width="100%" height={170}>
             <AreaChart data={p.wealthData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="slideTimelineGrad" x1="0" y1="0" x2="0" y2="1">
@@ -637,8 +679,210 @@ export const InsightsSlide: React.FC<SlideTemplateProps> = ({ branding, personaD
   )
 }
 
-// 8. Custom Slide
 export const CustomTextSlide: React.FC<SlideTemplateProps> = ({ branding, customTitle, customContent }) => {
+  const title = (customTitle || '').toLowerCase()
+
+  // 1. Chart: How Your Retirement Money Is Now Split
+  if (title.includes('split') || title.includes('money is now')) {
+    const data = [
+      { name: 'Savings Pot (Tranche A)', value: 33, color: branding.primaryColor },
+      { name: 'Retirement Pot (Tranche B)', value: 67, color: branding.secondaryColor || '#F59E0B' }
+    ]
+    return (
+      <SlideShell branding={branding}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 16px 0', color: '#fff', letterSpacing: '-0.02em' }}>
+          {customTitle}
+        </h2>
+        <div style={{ display: 'flex', gap: 32, flex: 1, alignItems: 'center', minHeight: 0 }}>
+          {/* Left Side: Donut Chart */}
+          <div style={{ flex: 1, height: 180, position: 'relative' }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11 }}
+                  itemStyle={{ color: '#fff' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              pointerEvents: 'none'
+            }}>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Split Ratio</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>1/3 vs 2/3</div>
+            </div>
+          </div>
+
+          {/* Right Side: Description */}
+          <div style={{ flex: 1.3, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              borderLeft: `4px solid ${branding.primaryColor}`,
+              padding: '16px 20px',
+              borderRadius: '0 8px 8px 0',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>Savings Pot (Tranche A) — 33%</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 6, lineHeight: 1.4 }}>Emergency access pool. Withdraw once per tax year (min R2,000). Taxed at marginal rate.</div>
+            </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              borderLeft: `4px solid ${branding.secondaryColor || '#F59E0B'}`,
+              padding: '16px 20px',
+              borderRadius: '0 8px 8px 0',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>Retirement Pot (Tranche B) — 67%</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 6, lineHeight: 1.4 }}>Completely locked until retirement. Preserves compound growth for long-term security.</div>
+            </div>
+          </div>
+        </div>
+      </SlideShell>
+    )
+  }
+
+  // 2. Chart/Visual: Why Withdrawing Early Is A Costly Mistake
+  if (title.includes('mistake') || title.includes('withdrawing early')) {
+    const impacts = [
+      { label: 'Gross Withdrawal', value: 'R30,000', sub: 'Requested amount', color: '#fff', accent: '#94a3b8' },
+      { label: 'Tax Deducted (up to 45%)', value: '-R13,500', sub: 'Taxed at marginal rate', color: '#ef4444', accent: '#ef4444' },
+      { label: 'Net Cash Received', value: 'R16,500', sub: 'What reaches you', color: '#38bdf8', accent: '#38bdf8' }
+    ]
+    return (
+      <SlideShell branding={branding}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 16px 0', color: '#fff', letterSpacing: '-0.02em' }}>
+          {customTitle}
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1, justifyContent: 'center' }}>
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.06)',
+            border: '1px solid rgba(239, 68, 68, 0.15)',
+            padding: '12px 18px',
+            borderRadius: 10,
+            fontSize: 12,
+            color: '#fca5a5',
+            lineHeight: 1.4
+          }}>
+            <strong>Example Scenario:</strong> Withdrawing R30,000 from your Savings Pot triggers immediate tax penalties.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            {impacts.map((item, idx) => (
+              <div key={idx} style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                borderLeft: `4px solid ${item.accent}`,
+                borderRadius: '0 10px 10px 0',
+                padding: '16px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxSizing: 'border-box'
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{item.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: item.color, margin: '10px 0 6px 0' }}>{item.value}</div>
+                <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)' }}>{item.sub}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            background: 'rgba(245, 158, 11, 0.05)',
+            border: '1px solid rgba(245, 158, 11, 0.15)',
+            borderLeft: `4px solid #F59E0B`,
+            padding: '16px 20px',
+            borderRadius: '0 10px 10px 0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fde047' }}>The "4.6x Rule" of Future Loss</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4, lineHeight: 1.4 }}>Taking out R30k today destroys R140,000 of compounded value over 20 years.</div>
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#fbbf24', textAlign: 'right', lineHeight: 1.3 }}>
+              For every R1 taken out,<br/>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>you lose</span> R4.60
+            </div>
+          </div>
+        </div>
+      </SlideShell>
+    )
+  }
+
+  // 3. Chart: The True Cost — Visualised
+  if (title.includes('visualised') || title.includes('visualized') || title.includes('true cost')) {
+    const chartData = [
+      { name: 'Left to Grow', value: 140000, fill: branding.primaryColor },
+      { name: 'Withdrawn', value: 0, fill: '#ef4444' }
+    ]
+    return (
+      <SlideShell branding={branding}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 16px 0', color: '#fff', letterSpacing: '-0.02em' }}>
+          {customTitle}
+        </h2>
+        <div style={{ display: 'flex', gap: 32, flex: 1, alignItems: 'center', minHeight: 0 }}>
+          {/* Left: Bar Chart */}
+          <div style={{ flex: 1.2, height: 180 }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.4)" fontSize={10} tickLine={false} />
+                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={10} tickLine={false} tickFormatter={(v) => `R${v/1000}k`} />
+                <Tooltip
+                  contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11 }}
+                  itemStyle={{ color: '#fff' }}
+                  formatter={(value: any) => [`R${value.toLocaleString()}`, 'Retirement Value']}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Right: Callout stats */}
+          <div style={{ flex: 0.9, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              borderLeft: `4px solid ${branding.primaryColor}`,
+              borderRadius: '0 8px 8px 0',
+              padding: '16px 20px'
+            }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>VALUE IF LEFT IN POT</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: branding.primaryColor, margin: '6px 0 2px 0' }}>R140,000</div>
+              <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)' }}>Grows at 8% p.a. for 20 years</div>
+            </div>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              borderLeft: '4px solid #ef4444',
+              borderRadius: '0 8px 8px 0',
+              padding: '16px 20px'
+            }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>VALUE IF WITHDRAWN</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444', margin: '6px 0 2px 0' }}>R0</div>
+              <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)' }}>Invested capital destroyed</div>
+            </div>
+          </div>
+        </div>
+      </SlideShell>
+    )
+  }
+
   // Parse content lines for bullets
   const lines = customContent ? customContent.split('\n').filter(l => l.trim()) : []
 

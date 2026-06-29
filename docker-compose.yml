@@ -1,0 +1,35 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: decora-insightsphere:latest
+    container_name: decora_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      # ── LLM / AI Config ──────────────────────────────
+      # Provide your LLM gateway credentials here or via an .env file:
+      # QBURST_GATEWAY_URL: https://llmgateway.qburst.build/v1
+      # QBURST_API_KEY: <your-api-key>
+      # GEMINI_MODEL: gpt-4o-mini
+    env_file:
+      - ./server/.env            # Loaded at runtime — never committed to git
+    volumes:
+      - uploads_data:/app/uploads  # Persist logo uploads across restarts
+      - db_data:/app               # Persist SQLite database
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  uploads_data:
+  db_data:

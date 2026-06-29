@@ -109,6 +109,9 @@ export interface Client {
   portfolioHoldings: PortfolioHolding[] | null
   isImported?: boolean
   createdAt?: string
+  clientType?: 'individual' | 'organizational'
+  brandColors?: string[]
+  dataSheet?: string | null
 }
 
 export type AppPage = 'home' | 'clients' | 'deck-builder' | 'analytics' | 'templates' | 'activity' | 'settings' | 'deck-config'
@@ -210,6 +213,8 @@ interface AppState {
   deleteClient: (id: string) => Promise<void>
   uploadClientLogo: (id: string, file: File) => Promise<string>
   uploadClientPortfolio: (id: string, file: File) => Promise<PortfolioHolding[]>
+  updateClientBrandColors: (id: string, colors: string[]) => Promise<Client>
+  uploadClientDataSheet: (id: string, file: File) => Promise<string>
 
   // Activity Logging
   activities: ActivityLog[]
@@ -395,6 +400,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { holdings, client: updated } = await res.json()
     set(state => ({ clients: state.clients.map(c => c.id === id ? updated : c) }))
     return holdings
+  },
+
+  updateClientBrandColors: async (id, colors) => {
+    const res = await fetch(`/api/clients/${id}/brand-colors`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ colors }),
+    })
+    if (!res.ok) throw new Error('Failed to update brand colors')
+    const updated = await res.json()
+    set(state => ({ clients: state.clients.map(c => c.id === id ? updated : c) }))
+    return updated
+  },
+
+  uploadClientDataSheet: async (id, file) => {
+    const form = new FormData()
+    form.append('datasheet', file)
+    const res = await fetch(`/api/clients/${id}/datasheet`, { method: 'POST', body: form })
+    if (!res.ok) throw new Error('Data sheet upload failed')
+    const { datasheetUrl, client: updated } = await res.json()
+    set(state => ({ clients: state.clients.map(c => c.id === id ? updated : c) }))
+    return datasheetUrl
   },
 
   importClientsFromCSV: (csvText) => {
@@ -816,7 +843,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         portfolioRes.goal = client.goal
         metricsRes.volatility = client.volatility
         metricsRes.sharpe = client.sharpe
-        portfolioRes.insight = `Alexander Forbes Engage client profile loaded: ${client.name}. Current Assets: $${client.current.toLocaleString()}, Target Goal: $${client.goal.toLocaleString()} (${client.persona === 'retirement-client' ? 'Retirement Solutions' : client.persona === 'family-planner' ? 'Education/Family Goal' : 'Compounding Accumulation'}).`
+        portfolioRes.insight = `Wealth Advisory Engage client profile loaded: ${client.name}. Current Assets: $${client.current.toLocaleString()}, Target Goal: $${client.goal.toLocaleString()} (${client.persona === 'retirement-client' ? 'Retirement Solutions' : client.persona === 'family-planner' ? 'Education/Family Goal' : 'Compounding Accumulation'}).`
         
         if (client.portfolioHoldings && client.portfolioHoldings.length > 0) {
           holdingsRes = client.portfolioHoldings.map((h: any) => ({

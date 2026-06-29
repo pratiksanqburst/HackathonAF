@@ -69,7 +69,7 @@ export const exportDeckToPPTX = async (
   const primaryColor = cleanColor(branding.primaryColor)
   const secondaryColor = cleanColor(branding.secondaryColor)
 
-  deck.forEach((slideItem) => {
+  for (const slideItem of deck) {
     const slide = pptx.addSlide()
     
     // Add Slide Notes if any
@@ -92,15 +92,46 @@ export const exportDeckToPPTX = async (
     // Header & Footer (Except for cover slide)
     if (slideItem.type !== 'cover') {
       // Top left logo indicator
-      slide.addText('◈ Deckora', {
-        x: 0.5,
-        y: 0.2,
-        w: 3.0,
-        h: 0.3,
-        fontSize: 12,
-        bold: true,
-        color: primaryColor,
-      })
+      if (branding.clientLogo) {
+        try {
+          const logoRes = await fetch(branding.clientLogo)
+          const blob = await logoRes.blob()
+          const reader = new FileReader()
+          const base64: string = await new Promise((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(blob)
+          })
+          const headerFit = branding.logoFit === 'cover' ? 'crop' : branding.logoFit === 'fill' ? undefined : 'contain'
+          slide.addImage({
+            data: base64,
+            x: 0.5,
+            y: 0.15,
+            w: 1.2,
+            h: 0.35,
+            ...(headerFit ? { sizing: { type: headerFit, w: 1.2, h: 0.35 } } : {})
+          })
+        } catch {
+          slide.addText('◈ Deckora', {
+            x: 0.5,
+            y: 0.2,
+            w: 3.0,
+            h: 0.3,
+            fontSize: 12,
+            bold: true,
+            color: primaryColor,
+          })
+        }
+      } else {
+        slide.addText('◈ Deckora', {
+          x: 0.5,
+          y: 0.2,
+          w: 3.0,
+          h: 0.3,
+          fontSize: 12,
+          bold: true,
+          color: primaryColor,
+        })
+      }
 
       // Top right prepared statement
       slide.addText(branding.clientName ? `Prepared for: ${branding.clientName}` : 'Portfolio Proposal', {
@@ -138,6 +169,10 @@ export const exportDeckToPPTX = async (
     // Slide-Specific Layouts
     switch (slideItem.type) {
       case 'cover': {
+        const isOrgClient = branding.clientType === 'organizational'
+        const displayClientName = branding.clientName || 'Valued Partner'
+        const displayCompany = branding.clientCompany || ''
+
         // Large background circle decoration
         slide.addShape(pptx.ShapeType.ellipse, {
           x: 9.0,
@@ -148,19 +183,60 @@ export const exportDeckToPPTX = async (
           line: { type: 'none' }
         })
 
-        // Cover Logo
-        slide.addText('◈ Deckora', {
-          x: 0.8,
-          y: 1.8,
-          w: 4.0,
-          h: 0.4,
-          fontSize: 18,
-          bold: true,
-          color: primaryColor,
-        })
+        // Cover Logo — use client logo if available
+        if (branding.clientLogo) {
+          try {
+            // Fetch the logo and embed it as a base64 image
+            const logoRes = await fetch(branding.clientLogo)
+            const blob = await logoRes.blob()
+            const reader = new FileReader()
+            const base64: string = await new Promise((resolve) => {
+              reader.onloadend = () => resolve(reader.result as string)
+              reader.readAsDataURL(blob)
+            })
+            const coverFit = branding.logoFit === 'cover' ? 'crop' : branding.logoFit === 'fill' ? undefined : 'contain'
+            slide.addImage({
+              data: base64,
+              x: 0.8,
+              y: 1.5,
+              w: 2.5,
+              h: 0.7,
+              ...(coverFit ? { sizing: { type: coverFit, w: 2.5, h: 0.7 } } : {})
+            })
+          } catch {
+            // fallback to text if logo fetch fails
+            slide.addText('◈ Deckora', {
+              x: 0.8, y: 1.8, w: 4.0, h: 0.4,
+              fontSize: 18, bold: true, color: primaryColor,
+            })
+          }
+        } else {
+          slide.addText('◈ Deckora', {
+            x: 0.8,
+            y: 1.8,
+            w: 4.0,
+            h: 0.4,
+            fontSize: 18,
+            bold: true,
+            color: primaryColor,
+          })
+        }
+
+        // Client type badge
+        if (branding.clientType) {
+          slide.addText(isOrgClient ? 'INSTITUTIONAL' : 'INDIVIDUAL', {
+            x: 0.8,
+            y: 2.3,
+            w: 2.5,
+            h: 0.22,
+            fontSize: 7,
+            bold: true,
+            color: primaryColor,
+          })
+        }
 
         // Cover Title
-        slide.addText(slideItem.title || (branding.clientName ? `Strategic Wealth Presentation` : 'Investment Strategy & Review'), {
+        slide.addText(slideItem.title || `Strategic Wealth Presentation`, {
           x: 0.8,
           y: 2.5,
           w: 8.5,
@@ -171,8 +247,8 @@ export const exportDeckToPPTX = async (
           fontFace: 'Arial',
         })
 
-        // Cover Subtitle
-        slide.addText(slideItem.content || 'Custom Portfolio Analytics & Projected Outcomes', {
+        // Cover Subtitle — personalised
+        slide.addText(`Prepared exclusively for ${displayClientName}`, {
           x: 0.8,
           y: 4.0,
           w: 8.5,
@@ -191,11 +267,16 @@ export const exportDeckToPPTX = async (
         })
 
         // Metadata grid
-        slide.addText('CLIENT', { x: 0.8, y: 5.2, w: 2.0, h: 0.2, fontSize: 8, color: '64748B', bold: true })
-        slide.addText(branding.clientName || 'Valued Partner', { x: 0.8, y: 5.4, w: 2.5, h: 0.3, fontSize: 12, color: textColor, bold: true })
+        slide.addText('CLIENT', { x: 0.8, y: 5.0, w: 2.0, h: 0.2, fontSize: 8, color: '64748B', bold: true })
+        slide.addText(displayClientName, { x: 0.8, y: 5.2, w: 3.0, h: 0.3, fontSize: 12, color: textColor, bold: true })
+        if (isOrgClient && displayCompany && displayCompany !== displayClientName) {
+          slide.addText(displayCompany, { x: 0.8, y: 5.55, w: 3.0, h: 0.25, fontSize: 10, color: '94A3B8' })
+        }
 
-        slide.addText('DATE', { x: 3.8, y: 5.2, w: 2.0, h: 0.2, fontSize: 8, color: '64748B', bold: true })
-        slide.addText(new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), { x: 3.8, y: 5.4, w: 2.5, h: 0.3, fontSize: 12, color: textColor, bold: true })
+        slide.addText('DATE', { x: 4.2, y: 5.0, w: 2.0, h: 0.2, fontSize: 8, color: '64748B', bold: true })
+        slide.addText(new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), { x: 4.2, y: 5.2, w: 2.5, h: 0.3, fontSize: 12, color: textColor, bold: true })
+
+        // Removed clientAge as requested
         break
       }
 
@@ -688,9 +769,11 @@ export const exportDeckToPPTX = async (
         break
       }
     }
-  })
+  }
+
 
   // Write file to trigger client-side download
-  const filename = `${branding.clientName.replace(/\s+/g, '_') || 'Client'}_Investment_Presentation.pptx`
+  const safeClientName = (branding.clientName || 'Client').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '')
+  const filename = `${safeClientName}_Investment_Presentation.pptx`
   await pptx.writeFile({ fileName: filename })
 }

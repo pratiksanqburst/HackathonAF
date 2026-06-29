@@ -34,7 +34,10 @@ db.exec(`
     volatility        REAL DEFAULT 12.0,
     logo              TEXT,
     portfolio_holdings TEXT,   -- JSON string
-    created_at        TEXT NOT NULL
+    created_at        TEXT NOT NULL,
+    client_type       TEXT DEFAULT 'individual',
+    brand_colors      TEXT DEFAULT '[]',   -- JSON array of hex strings
+    data_sheet        TEXT
   );
 
   CREATE TABLE IF NOT EXISTS activity_logs (
@@ -48,23 +51,34 @@ db.exec(`
   );
 `)
 
+// Migration: Add new columns if they don't exist (for existing DBs)
+try {
+  db.exec(`ALTER TABLE clients ADD COLUMN client_type TEXT DEFAULT 'individual'`)
+} catch {}
+try {
+  db.exec(`ALTER TABLE clients ADD COLUMN brand_colors TEXT DEFAULT '[]'`)
+} catch {}
+try {
+  db.exec(`ALTER TABLE clients ADD COLUMN data_sheet TEXT`)
+} catch {}
+
 // ─── Seed demo data (only on first run when tables are empty) ─────────────────
 
 const clientCount = db.prepare('SELECT COUNT(*) as n FROM clients').get().n
 
 if (clientCount === 0) {
   const insert = db.prepare(`
-    INSERT INTO clients (id, name, email, contact, address, company, age, persona, current, goal, sharpe, volatility, logo, portfolio_holdings, created_at)
-    VALUES (@id, @name, @email, @contact, @address, @company, @age, @persona, @current, @goal, @sharpe, @volatility, @logo, @portfolio_holdings, @created_at)
+    INSERT INTO clients (id, name, email, contact, address, company, age, persona, current, goal, sharpe, volatility, logo, portfolio_holdings, created_at, client_type, brand_colors, data_sheet)
+    VALUES (@id, @name, @email, @contact, @address, @company, @age, @persona, @current, @goal, @sharpe, @volatility, @logo, @portfolio_holdings, @created_at, @client_type, @brand_colors, @data_sheet)
   `)
 
   const seedClients = [
-    { id: 'margaret', name: 'Margaret Chen',    email: 'margaret.chen@email.com', contact: '+1 (415) 555-0101', address: '123 Market St, San Francisco, CA', company: 'TechVentures Inc',    age: 48, persona: 'family-planner',    current: 620000,  goal: 1000000, sharpe: 1.55, volatility: 10.4, logo: null, portfolio_holdings: null, created_at: '2024-01-15T00:00:00.000Z' },
-    { id: 'robert',   name: 'Robert Harrington', email: 'r.harrington@finance.com', contact: '+1 (212) 555-0182', address: '456 Wall St, New York, NY',        company: 'Harrington Capital',   age: 52, persona: 'young-investor',   current: 850000,  goal: 1200000, sharpe: 1.68, volatility: 18.2, logo: null, portfolio_holdings: null, created_at: '2024-02-20T00:00:00.000Z' },
-    { id: 'patricia', name: 'Patricia Sullivan', email: 'patricia.s@wealth.com',   contact: '+1 (312) 555-0247', address: '789 Lake Shore Dr, Chicago, IL',   company: 'Sullivan Family Trust', age: 61, persona: 'retirement-client', current: 1450000, goal: 1800000, sharpe: 1.12, volatility: 6.5,  logo: null, portfolio_holdings: null, created_at: '2024-03-10T00:00:00.000Z' },
-    { id: 'james',    name: 'James Okonkwo',     email: 'james.o@globalinv.com',   contact: '+1 (713) 555-0330', address: '101 Energy Blvd, Houston, TX',     company: 'Global Investments',   age: 44, persona: 'family-planner',    current: 480000,  goal: 800000,  sharpe: 1.45, volatility: 11.8, logo: null, portfolio_holdings: null, created_at: '2024-04-05T00:00:00.000Z' },
-    { id: 'sarah_k',  name: 'Sarah Kowalski',    email: 'sarah.k@startupvc.com',   contact: '+1 (650) 555-0415', address: '222 Silicon Ave, Palo Alto, CA',   company: 'Kowalski Ventures',    age: 35, persona: 'young-investor',   current: 320000,  goal: 600000,  sharpe: 1.92, volatility: 21.5, logo: null, portfolio_holdings: null, created_at: '2024-05-18T00:00:00.000Z' },
-    { id: 'david_k',  name: 'David Kim',          email: 'david.kim@kimprop.com',   contact: '+1 (310) 555-0512', address: '333 Wilshire Blvd, Los Angeles, CA', company: 'Kim Properties',      age: 42, persona: 'family-planner',    current: 750000,  goal: 1100000, sharpe: 1.38, volatility: 9.6,  logo: null, portfolio_holdings: null, created_at: '2024-06-01T00:00:00.000Z' },
+    { id: 'margaret', name: 'Margaret Chen',    email: 'margaret.chen@email.com', contact: '+1 (415) 555-0101', address: '123 Market St, San Francisco, CA', company: 'TechVentures Inc',    age: 48, persona: 'family-planner',    current: 620000,  goal: 1000000, sharpe: 1.55, volatility: 10.4, logo: null, portfolio_holdings: null, created_at: '2024-01-15T00:00:00.000Z', client_type: 'organizational', brand_colors: '[]', data_sheet: null },
+    { id: 'robert',   name: 'Robert Harrington', email: 'r.harrington@finance.com', contact: '+1 (212) 555-0182', address: '456 Wall St, New York, NY',        company: 'Harrington Capital',   age: 52, persona: 'young-investor',   current: 850000,  goal: 1200000, sharpe: 1.68, volatility: 18.2, logo: null, portfolio_holdings: null, created_at: '2024-02-20T00:00:00.000Z', client_type: 'organizational', brand_colors: '[]', data_sheet: null },
+    { id: 'patricia', name: 'Patricia Sullivan', email: 'patricia.s@wealth.com',   contact: '+1 (312) 555-0247', address: '789 Lake Shore Dr, Chicago, IL',   company: 'Sullivan Family Trust', age: 61, persona: 'retirement-client', current: 1450000, goal: 1800000, sharpe: 1.12, volatility: 6.5,  logo: null, portfolio_holdings: null, created_at: '2024-03-10T00:00:00.000Z', client_type: 'individual', brand_colors: '[]', data_sheet: null },
+    { id: 'james',    name: 'James Okonkwo',     email: 'james.o@globalinv.com',   contact: '+1 (713) 555-0330', address: '101 Energy Blvd, Houston, TX',     company: 'Global Investments',   age: 44, persona: 'family-planner',    current: 480000,  goal: 800000,  sharpe: 1.45, volatility: 11.8, logo: null, portfolio_holdings: null, created_at: '2024-04-05T00:00:00.000Z', client_type: 'organizational', brand_colors: '[]', data_sheet: null },
+    { id: 'sarah_k',  name: 'Sarah Kowalski',    email: 'sarah.k@startupvc.com',   contact: '+1 (650) 555-0415', address: '222 Silicon Ave, Palo Alto, CA',   company: 'Kowalski Ventures',    age: 35, persona: 'young-investor',   current: 320000,  goal: 600000,  sharpe: 1.92, volatility: 21.5, logo: null, portfolio_holdings: null, created_at: '2024-05-18T00:00:00.000Z', client_type: 'individual', brand_colors: '[]', data_sheet: null },
+    { id: 'david_k',  name: 'David Kim',          email: 'david.kim@kimprop.com',   contact: '+1 (310) 555-0512', address: '333 Wilshire Blvd, Los Angeles, CA', company: 'Kim Properties',      age: 42, persona: 'family-planner',    current: 750000,  goal: 1100000, sharpe: 1.38, volatility: 9.6,  logo: null, portfolio_holdings: null, created_at: '2024-06-01T00:00:00.000Z', client_type: 'individual', brand_colors: '[]', data_sheet: null },
   ]
 
   const seedMany = db.transaction((rows) => {
@@ -116,6 +130,9 @@ function deserialiseClient(row) {
     logo:              row.logo || null,
     portfolioHoldings: row.portfolio_holdings ? JSON.parse(row.portfolio_holdings) : null,
     createdAt:         row.created_at,
+    clientType:        row.client_type || 'individual',
+    brandColors:       row.brand_colors ? JSON.parse(row.brand_colors) : [],
+    dataSheet:         row.data_sheet || null,
   }
 }
 
@@ -139,18 +156,21 @@ const stmts = {
   getAllClients:    db.prepare('SELECT * FROM clients ORDER BY created_at DESC'),
   getClientById:   db.prepare('SELECT * FROM clients WHERE id = ?'),
   insertClient:    db.prepare(`
-    INSERT INTO clients (id, name, email, contact, address, company, age, persona, current, goal, sharpe, volatility, logo, portfolio_holdings, created_at)
-    VALUES (@id, @name, @email, @contact, @address, @company, @age, @persona, @current, @goal, @sharpe, @volatility, @logo, @portfolio_holdings, @created_at)
+    INSERT INTO clients (id, name, email, contact, address, company, age, persona, current, goal, sharpe, volatility, logo, portfolio_holdings, created_at, client_type, brand_colors, data_sheet)
+    VALUES (@id, @name, @email, @contact, @address, @company, @age, @persona, @current, @goal, @sharpe, @volatility, @logo, @portfolio_holdings, @created_at, @client_type, @brand_colors, @data_sheet)
   `),
   updateClient:    db.prepare(`
     UPDATE clients
     SET name=@name, email=@email, contact=@contact, address=@address, company=@company,
-        age=@age, persona=@persona, current=@current, goal=@goal, sharpe=@sharpe, volatility=@volatility
+        age=@age, persona=@persona, current=@current, goal=@goal, sharpe=@sharpe, volatility=@volatility,
+        client_type=@client_type
     WHERE id=@id
   `),
   deleteClient:    db.prepare('DELETE FROM clients WHERE id = ?'),
   updateLogo:      db.prepare('UPDATE clients SET logo = @logo WHERE id = @id'),
   updateHoldings:  db.prepare('UPDATE clients SET portfolio_holdings = @portfolio_holdings, current = @current WHERE id = @id'),
+  updateBrandColors: db.prepare('UPDATE clients SET brand_colors = @brand_colors WHERE id = @id'),
+  updateDataSheet:   db.prepare('UPDATE clients SET data_sheet = @data_sheet WHERE id = @id'),
 
   // Activity
   getAllActivity:   db.prepare('SELECT * FROM activity_logs ORDER BY timestamp DESC LIMIT 100'),
@@ -172,17 +192,18 @@ module.exports = {
     if (!existing) return null
     const merged = {
       id,
-      name:      fields.name      ?? existing.name,
-      email:     fields.email     ?? existing.email,
-      contact:   fields.contact   ?? existing.contact,
-      address:   fields.address   ?? existing.address,
-      company:   fields.company   ?? existing.company,
-      age:       fields.age       ?? existing.age,
-      persona:   fields.persona   ?? existing.persona,
-      current:   fields.current   ?? existing.current,
-      goal:      fields.goal      ?? existing.goal,
-      sharpe:    fields.sharpe    ?? existing.sharpe,
-      volatility:fields.volatility?? existing.volatility,
+      name:        fields.name        ?? existing.name,
+      email:       fields.email       ?? existing.email,
+      contact:     fields.contact     ?? existing.contact,
+      address:     fields.address     ?? existing.address,
+      company:     fields.company     ?? existing.company,
+      age:         fields.age         ?? existing.age,
+      persona:     fields.persona     ?? existing.persona,
+      current:     fields.current     ?? existing.current,
+      goal:        fields.goal        ?? existing.goal,
+      sharpe:      fields.sharpe      ?? existing.sharpe,
+      volatility:  fields.volatility  ?? existing.volatility,
+      client_type: fields.clientType  ?? fields.client_type ?? existing.client_type ?? 'individual',
     }
     stmts.updateClient.run(merged)
     return this.getClientById(id)
@@ -198,6 +219,14 @@ module.exports = {
       portfolio_holdings: JSON.stringify(holdings),
       current: newCurrent,
     })
+    return this.getClientById(id)
+  },
+  updateBrandColors(id, colors) {
+    stmts.updateBrandColors.run({ id, brand_colors: JSON.stringify(colors) })
+    return this.getClientById(id)
+  },
+  updateDataSheet(id, dataSheetUrl) {
+    stmts.updateDataSheet.run({ id, data_sheet: dataSheetUrl })
     return this.getClientById(id)
   },
 

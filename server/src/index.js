@@ -19,7 +19,7 @@ if (gatewayEnabled) {
   console.log('⚠️  QBURST_API_KEY not set — copilot running in mock mode.')
 }
 
-const SYSTEM_PROMPT = `You are an elite AI financial advisor copilot for "AF Engage" by Alexander Forbes. Recommend solutions from three pillars: Retirement Solutions (RA, Living Annuity, Guaranteed Annuity), Investment Management (Unit Trust - Equity/Debt/Hybrid), Insurance & Risk (Life Insurance, Disability Insurance, Income Protection). Match recommendations to client life stage: Early Career (RA + Unit Trust Equity + Income Protection), Mid Career (Unit Trust Hybrid + Life/Disability Insurance), Pre-Retirement (capital consolidation), Retirement (Living Annuity + Guaranteed Annuity). Be premium, professional, and concise — max 4 sentences or 3 bullet points. No markdown headers or bold.`
+const SYSTEM_PROMPT = `You are an elite AI financial advisor copilot for "AF Engage". Recommend solutions from three pillars: Retirement Solutions (RA, Living Annuity, Guaranteed Annuity), Investment Management (Unit Trust - Equity/Debt/Hybrid), Insurance & Risk (Life Insurance, Disability Insurance, Income Protection). Match recommendations to client life stage: Early Career (RA + Unit Trust Equity + Income Protection), Mid Career (Unit Trust Hybrid + Life/Disability Insurance), Pre-Retirement (capital consolidation), Retirement (Living Annuity + Guaranteed Annuity). Be premium, professional, and concise — max 4 sentences or 3 bullet points. No markdown headers or bold.`
 
 async function askGemini(prompt, options = {}) {
   if (!gatewayEnabled) return null
@@ -429,16 +429,16 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
   }[persona] || 'a wealth management client'
 
   const slidePrompts = {
-    cover:       `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}. Ground it in Alexander Forbes' core pillars: Retirement Solutions, Investment Management, and Insurance & Protection. Make it sound premium, professional, and forward-looking.`,
-    metrics:     `Analyze these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Write 3 concise bullet points. Focus on how these metrics align with their life stage, and suggest rebalancing into specific Alexander Forbes Unit Trusts (Equity, Debt, or Hybrid) depending on their current returns and risk.`,
-    holdings:    `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for their profile (${personaCtx}) and how structuring these holdings inside an Alexander Forbes Retirement Annuity (RA) or Living Annuity (LA) would optimize tax efficiency.`,
-    risk:        `Write 2-3 bullet points on the risk management strategy for ${client} (${personaCtx}) based on metrics: ${metricsCtx}. Explain how to hedge these risks using Alexander Forbes Insurance & Risk products (such as Income Protection or Disability Insurance) alongside tactical asset allocation.`,
+    cover:       `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}. Ground it in our platform's core pillars: Retirement Solutions, Investment Management, and Insurance & Protection. Make it sound premium, professional, and forward-looking.`,
+    metrics:     `Analyze these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Write 3 concise bullet points. Focus on how these metrics align with their life stage, and suggest rebalancing into specific Unit Trusts (Equity, Debt, or Hybrid) depending on their current returns and risk.`,
+    holdings:    `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for their profile (${personaCtx}) and how structuring these holdings inside a Retirement Annuity (RA) or Living Annuity (LA) would optimize tax efficiency.`,
+    risk:        `Write 2-3 bullet points on the risk management strategy for ${client} (${personaCtx}) based on metrics: ${metricsCtx}. Explain how to hedge these risks using Insurance & Risk products (such as Income Protection or Disability Insurance) alongside tactical asset allocation.`,
     timeline:    `Write 2-3 bullet points on the wealth growth trajectory and compounding strategy for ${client} (${personaCtx}). Reference their long-term timeline and recommend structured contributions to a Retirement Annuity (RA) that transitions to a Living Annuity (LA) in their later years.`,
     montecarlo:  `Write 2-3 bullet points interpreting Monte Carlo simulation results for ${client} (${personaCtx}). Key metrics: ${metricsCtx}. Explain probability of goal success clearly, and advise if they should increase contributions to their Retirement Annuity (RA) to boost their probability of success.`,
-    insights:    `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}) based on holdings (${holdingsCtx}) and metrics (${metricsCtx}). Focus on actionable next steps across the 3 Alexander Forbes pillars (Retirement Solutions, Investment Management, Insurance & Protection), such as rebalancing to a Unit Trust - Hybrid fund or covering protection gaps.`,
+    insights:    `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}) based on holdings (${holdingsCtx}) and metrics (${metricsCtx}). Focus on actionable next steps across the 3 advisory pillars (Retirement Solutions, Investment Management, Insurance & Protection), such as rebalancing to a Unit Trust - Hybrid fund or covering protection gaps.`,
     custom:      customPrompt
-      ? `Write 3 concise bullet points for a slide based on this user instruction: "${customPrompt}". Tailor it specifically for ${client} (${personaCtx}) and align it with Alexander Forbes financial solutions. Holdings: ${holdingsCtx}.`
-      : `Write 3 bullet points of general market outlook and investment advice for a wealth management presentation for ${client}, focusing on the importance of active management via Alexander Forbes Unit Trust solutions.`,
+      ? `Write 3 concise bullet points for a slide based on this user instruction: "${customPrompt}". Tailor it specifically for ${client} (${personaCtx}) and align it with our financial advisory solutions. Holdings: ${holdingsCtx}.`
+      : `Write 3 bullet points of general market outlook and investment advice for a wealth management presentation for ${client}, focusing on the importance of active management via premium Unit Trust solutions.`,
   }
 
   const prompt = slidePrompts[slideType] || slidePrompts.custom
@@ -450,9 +450,9 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
     return res.json({ draft: aiDraft, source: 'gemini' })
   }
 
-  // Mock fallback (Alexander Forbes product aligned)
+  // Mock fallback
   const mockDrafts = {
-    cover:      `Alexander Forbes - AF Engage Investment Strategy Report prepared for ${client}. Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
+    cover:      `AF Engage Investment Strategy Report prepared for ${client}. Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
     metrics:    metrics
       ? `The portfolio metrics indicate alignment with targeted returns. Recommend optimizing allocations by adding to our Unit Trust - Equity or Unit Trust - Debt funds depending on current yield targets.`
       : `Portfolio risk-adjusted returns demonstrate sustained outperformance over benchmark models.`,
@@ -488,14 +488,14 @@ app.post('/api/copilot/generate-deck', async (req, res) => {
   }[persona] || 'a wealth management client'
 
   const slidePrompts = {
-    cover:       `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}. Ground it in Alexander Forbes' core pillars: Retirement Solutions, Investment Management, and Insurance & Protection. Make it sound premium, professional, and forward-looking.`,
-    metrics:     `Analyze these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Write 3 concise bullet points. Focus on how these metrics align with their life stage, and suggest rebalancing into specific Alexander Forbes Unit Trusts (Equity, Debt, or Hybrid) depending on their current returns and risk.`,
-    holdings:    `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for their profile (${personaCtx}) and how structuring these holdings inside an Alexander Forbes Retirement Annuity (RA) or Living Annuity (LA) would optimize tax efficiency.`,
-    risk:        `Write 2-3 bullet points on the risk management strategy for ${client} (${personaCtx}) based on metrics: ${metricsCtx}. Explain how to hedge these risks using Alexander Forbes Insurance & Risk products (such as Income Protection or Disability Insurance) alongside tactical asset allocation.`,
+    cover:       `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}. Ground it in our platform's core pillars: Retirement Solutions, Investment Management, and Insurance & Protection. Make it sound premium, professional, and forward-looking.`,
+    metrics:     `Analyze these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Write 3 concise bullet points. Focus on how these metrics align with their life stage, and suggest rebalancing into specific Unit Trusts (Equity, Debt, or Hybrid) depending on their current returns and risk.`,
+    holdings:    `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for their profile (${personaCtx}) and how structuring these holdings inside a Retirement Annuity (RA) or Living Annuity (LA) would optimize tax efficiency.`,
+    risk:        `Write 2-3 bullet points on the risk management strategy for ${client} (${personaCtx}) based on metrics: ${metricsCtx}. Explain how to hedge these risks using Insurance & Risk products (such as Income Protection or Disability Insurance) alongside tactical asset allocation.`,
     timeline:    `Write 2-3 bullet points on the wealth growth trajectory and compounding strategy for ${client} (${personaCtx}). Reference their long-term timeline and recommend structured contributions to a Retirement Annuity (RA) that transitions to a Living Annuity (LA) in their later years.`,
     montecarlo:  `Write 2-3 bullet points interpreting Monte Carlo simulation results for ${client} (${personaCtx}). Key metrics: ${metricsCtx}. Explain probability of goal success clearly, and advise if they should increase contributions to their Retirement Annuity (RA) to boost their probability of success.`,
-    insights:    `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}) based on holdings (${holdingsCtx}) and metrics (${metricsCtx}). Focus on actionable next steps across the 3 Alexander Forbes pillars (Retirement Solutions, Investment Management, Insurance & Protection), such as rebalancing to a Unit Trust - Hybrid fund or covering protection gaps.`,
-    custom:      `Write 3 bullet points of general market outlook and investment advice for a wealth management presentation for ${client}, focusing on the importance of active management via Alexander Forbes Unit Trust solutions.`,
+    insights:    `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}) based on holdings (${holdingsCtx}) and metrics (${metricsCtx}). Focus on actionable next steps across the 3 advisory pillars (Retirement Solutions, Investment Management, Insurance & Protection), such as rebalancing to a Unit Trust - Hybrid fund or covering protection gaps.`,
+    custom:      `Write 3 bullet points of general market outlook and investment advice for a wealth management presentation for ${client}, focusing on the importance of active management via premium Unit Trust solutions.`,
   }
 
   try {
@@ -506,27 +506,26 @@ app.post('/api/copilot/generate-deck', async (req, res) => {
         return { id: slide.id, draft: aiDraft }
       }
 
-      // Mock fallback (Alexander Forbes aligned)
+      // Mock fallback
       const mockDrafts = {
-        cover:      `• Alexander Forbes - AF Engage Investment Strategy Report prepared for ${client}.\n• Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
+        cover:      `• AF Engage Investment Strategy Report prepared for ${client}.\n• Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
         metrics:    metrics
           ? `• Portfolio registered a YTD Return of +${metrics.ytdReturn}%.\n• Recommend optimizing yield by allocating to our Unit Trust - Equity or Unit Trust - Debt funds.\n• Volatility is managed at ${metrics.volatility}% with a Sharpe ratio of ${metrics.sharpe}.`
           : `• Portfolio risk-adjusted returns demonstrate sustained outperformance over benchmark models.`,
         holdings:   holdings?.length > 0
-          ? `• Core growth holdings represent stable performance engines.\n• Wrapping active equity within a Retirement Annuity (RA) structure offers maximum tax efficiency.\n• Holdings align with Alexander Forbes' client risk guidelines.`
+          ? `• Core growth holdings represent stable performance engines.\n• Wrapping active equity within a Retirement Annuity (RA) structure offers maximum tax efficiency.\n• Holdings align with our client risk guidelines.`
           : `• Current holdings show a well-diversified mix optimised for yield and targeted asset allocation.`,
         risk:       `• Volatility has been systematically hedged through tactical asset allocation.\n• Suggest wrapping with an Insurance & Risk product such as Income Protection or Disability Insurance to guard client path.\n• Liquid buffers protect principal under correction events.`,
         timeline:   `• Compounding projections confirm a steady trajectory towards pre-retirement phases.\n• Wealth transition will leverage a Living Annuity (LA) strategy to sustain drawdowns.\n• Projections remain aligned with targeted timeline parameters.`,
         montecarlo: `• Monte Carlo simulations indicate a high probability of success for achieving retirement targets.\n• Recommend consistent monthly contributions to the client's Retirement Annuity (RA).\n• Strategy remains robust under standard market stress variations.`,
         insights:   `• Key recommendation: optimize tax efficiency via Retirement Annuity (RA) contributions.\n• Address protection gaps with Life Insurance (Death Cover) and Income Protection.\n• Allocate to Unit Trust - Hybrid to capture balanced yield.`,
-        custom:     `• Position portfolio to align with retirement solutions (RA/LA)\n• Allocate assets strategically to Unit Trust - Equity and Unit Trust - Hybrid\n• Review coverage under Alexander Forbes Insurance & Risk Products`,
+        custom:     `• Position portfolio to align with retirement solutions (RA/LA)\n• Allocate assets strategically to Unit Trust - Equity and Unit Trust - Hybrid\n• Review coverage under Insurance & Risk Products`,
       }
       return { id: slide.id, draft: mockDrafts[slide.type] || mockDrafts.custom }
     })
 
     const results = await Promise.all(promises)
     const draftsMap = results.reduce((acc, curr) => {
-      acc[curr.id] = curr.draft
       acc[curr.id] = curr.draft
       return acc
     }, {})
@@ -656,7 +655,7 @@ app.post('/api/copilot/chat', async (req, res) => {
     ? `NOTE: A "${stressScenario}" stress scenario is currently active on the dashboard.`
     : ''
 
-  const prompt = `You are advising a ${personaCtx} on the Alexander Forbes "AF Engage" platform. Portfolio value: $${portfolioValue?.toLocaleString() || 'N/A'}. ${metricsCtx}. ${stressCtx}
+  const prompt = `You are advising a ${personaCtx} on the AF Engage platform. Portfolio value: $${portfolioValue?.toLocaleString() || 'N/A'}. ${metricsCtx}. ${stressCtx}
 
 Advisor question: "${message}"
 
@@ -687,7 +686,7 @@ app.post('/api/copilot/stress-appraisal', async (req, res) => {
     ? `Sharpe: ${metrics.sharpe}, Volatility: ${metrics.volatility}%, Max Drawdown: ${metrics.maxDrawdown}%`
     : 'N/A'
 
-  const prompt = `You are an expert risk officer advising an Alexander Forbes advisor.
+  const prompt = `You are an expert risk officer advising a financial advisor.
 Client profile: ${persona}
 Active stress scenario: ${scenario}
 Current holdings: ${holdingsCtx}
@@ -695,7 +694,7 @@ Current metrics: ${metricsCtx}
 
 Analyze the direct impact of this stress scenario on the client's specific assets.
 Explain the vulnerabilities clearly.
-Propose 1 or 2 concrete, realistic rebalancing actions they should take immediately (e.g. shifting assets into Alexander Forbes Unit Trust - Debt for capital shielding, or reinforcing their plan with Insurance & Protection products like Income Protection to hedge income risks).
+Propose 1 or 2 concrete, realistic rebalancing actions they should take immediately (e.g. shifting assets into Unit Trust - Debt for capital shielding, or reinforcing their plan with Insurance & Protection products like Income Protection to hedge income risks).
 Keep the advice highly professional, direct, and under 4 sentences. Do not use markdown headers.`
 
   const aiReply = await askGemini(prompt)
@@ -734,7 +733,7 @@ Plan A parameters:
 
   prompt += `\n\nProvide a professional appraisal of the feasibility of these parameters for this client.
 Are the growth rates realistic for this client's risk profile?
-What adjustments in either contributions or timeframe should the advisor recommend? Suggest how leveraging tax-deductible contributions to an Alexander Forbes Retirement Annuity (RA) or selecting high-performing Alexander Forbes Unit Trust - Equity funds can assist in closing any projected wealth gap.
+What adjustments in either contributions or timeframe should the advisor recommend? Suggest how leveraging tax-deductible contributions to a Retirement Annuity (RA) or selecting high-performing Unit Trust - Equity funds can assist in closing any projected wealth gap.
 Keep your response to 3-4 sentences maximum. Be precise and professional. Do not use markdown headers.`
 
   const aiReply = await askGemini(prompt)
@@ -757,14 +756,14 @@ app.post('/api/copilot/news-impact', async (req, res) => {
     ? holdings.map(h => `${h.symbol} (${h.name})`).join(', ')
     : 'equities'
 
-  const prompt = `You are an institutional financial analyst advising on the Alexander Forbes "AF Engage" platform.
+  const prompt = `You are an institutional financial analyst advising on the AF Engage platform.
 Client profile: ${persona}
 Client holdings: ${holdingsCtx}
 News Headline: "${headline}" (Source: ${source}, Category: ${category})
 
 Explain how this specific piece of news impacts the client's current portfolio holdings.
 Specify which assets in their list are most exposed (positively or negatively) and why.
-Provide a clear advisory takeaway: suggest whether they should tactically adjust their allocations to Alexander Forbes Unit Trust funds (e.g. rotating towards Unit Trust - Debt or stabilizing via Unit Trust - Hybrid).
+Provide a clear advisory takeaway: suggest whether they should tactically adjust their allocations to Unit Trust funds (e.g. rotating towards Unit Trust - Debt or stabilizing via Unit Trust - Hybrid).
 Keep the response to 3 sentences max. Do not use markdown headers.`
 
   const aiReply = await askGemini(prompt)
@@ -833,7 +832,7 @@ app.post('/api/copilot/generate-theme', async (req, res) => {
     'retirement-client': 'a retirement-stage, capital-preservation client',
   }[persona] || 'a wealth management client'
 
-  const prompt = `You are a professional presentation designer for Alexander Forbes wealth management.
+  const prompt = `You are a professional presentation designer for wealth management.
 A financial advisor is building a client-facing investment deck for ${clientName || 'a client'} who is ${personaCtx}.
 
 They described their desired theme as: "${description}"
@@ -908,7 +907,8 @@ const fs = require('fs')
 const UPLOADS_DIR = path.join(__dirname, '../../uploads')
 const LOGOS_DIR   = path.join(UPLOADS_DIR, 'logos')
 const PORTFOLIO_DIR = path.join(UPLOADS_DIR, 'portfolios')
-;[UPLOADS_DIR, LOGOS_DIR, PORTFOLIO_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }) })
+const DATASHEETS_DIR = path.join(UPLOADS_DIR, 'datasheets')
+;[UPLOADS_DIR, LOGOS_DIR, PORTFOLIO_DIR, DATASHEETS_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }) })
 
 // Serve uploads as static files
 app.use('/uploads', express.static(UPLOADS_DIR))
@@ -921,8 +921,13 @@ const portfolioStorage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, PORTFOLIO_DIR),
   filename: (_, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`)
 })
+const datasheetStorage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, DATASHEETS_DIR),
+  filename: (_, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`)
+})
 const uploadLogo      = multer({ storage: logoStorage,      limits: { fileSize: 5 * 1024 * 1024 } })
 const uploadPortfolio = multer({ storage: portfolioStorage, limits: { fileSize: 10 * 1024 * 1024 } })
+const uploadDatasheet = multer({ storage: datasheetStorage, limits: { fileSize: 20 * 1024 * 1024 } })
 
 // ─── Client ID generator ─────────────────────────────────────────────────────
 function generateClientId(name) {
@@ -967,7 +972,7 @@ app.get('/api/clients/:id', (req, res) => {
 
 // POST /api/clients — create client
 app.post('/api/clients', (req, res) => {
-  const { name, email, contact, address, company, age, persona, current, goal, sharpe, volatility } = req.body
+  const { name, email, contact, address, company, age, persona, current, goal, sharpe, volatility, clientType } = req.body
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' })
 
   const row = {
@@ -986,6 +991,9 @@ app.post('/api/clients', (req, res) => {
     logo:                null,
     portfolio_holdings:  null,
     created_at:          new Date().toISOString(),
+    client_type:         clientType || 'individual',
+    brand_colors:        '[]',
+    data_sheet:          null,
   }
   const newClient = db.insertClient(row)
   logActivity('client_create', 'New Client Created', `Client profile created for ${newClient.name}.`, { clientId: newClient.id, clientName: newClient.name })
@@ -997,12 +1005,22 @@ app.put('/api/clients/:id', (req, res) => {
   const existing = db.getClientById(req.params.id)
   if (!existing) return res.status(404).json({ error: 'Client not found' })
 
-  const allowed = ['name','email','contact','address','company','age','persona','current','goal','sharpe','volatility']
+  const allowed = ['name','email','contact','address','company','age','persona','current','goal','sharpe','volatility','clientType']
   const updates = {}
   allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k] })
 
   const updated = db.updateClient(req.params.id, updates)
   logActivity('client_update', 'Client Profile Updated', `Updated profile parameters for ${updated.name}.`, { clientId: updated.id, clientName: updated.name })
+  res.json(updated)
+})
+
+// PATCH /api/clients/:id/brand-colors — update brand colors
+app.patch('/api/clients/:id/brand-colors', (req, res) => {
+  const existing = db.getClientById(req.params.id)
+  if (!existing) return res.status(404).json({ error: 'Client not found' })
+  const { colors } = req.body
+  if (!Array.isArray(colors)) return res.status(400).json({ error: 'colors must be an array' })
+  const updated = db.updateBrandColors(req.params.id, colors)
   res.json(updated)
 })
 
@@ -1052,6 +1070,18 @@ app.post('/api/clients/:id/portfolio', uploadPortfolio.single('portfolio'), (req
   }
 })
 
+// POST /api/clients/:id/datasheet — upload data sheet (PDF/Excel/CSV)
+app.post('/api/clients/:id/datasheet', uploadDatasheet.single('datasheet'), (req, res) => {
+  const existing = db.getClientById(req.params.id)
+  if (!existing) return res.status(404).json({ error: 'Client not found' })
+  if (!req.file)  return res.status(400).json({ error: 'No file uploaded' })
+
+  const datasheetUrl = `/uploads/datasheets/${req.file.filename}`
+  const updated = db.updateDataSheet(req.params.id, datasheetUrl)
+  logActivity('datasheet_upload', 'Data Sheet Uploaded', `Data sheet uploaded for ${updated.name}.`, { clientId: updated.id, clientName: updated.name })
+  res.json({ datasheetUrl, client: updated })
+})
+
 // GET /api/clients/template/portfolio — download sample portfolio CSV template
 app.get('/api/clients/template/portfolio', (req, res) => {
   const csv = [
@@ -1076,5 +1106,16 @@ function timeSince(date) {
   return `${Math.floor(s / 86400)}d ago`
 }
 
-app.listen(5000, () => console.log('Deckora API running on :5000'))
+// ─── Static client serving (production Docker build) ─────────────────────────
+const path = require('path')
+if (process.env.NODE_ENV === 'production') {
+  const clientBuild = path.join(__dirname, '..', 'public')
+  app.use(express.static(clientBuild))
+  // React SPA — serve index.html for all unknown routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuild, 'index.html'))
+  })
+}
 
+const PORT = process.env.PORT || 5000
+app.listen(PORT, () => console.log(`Deckora API running on :${PORT}`))

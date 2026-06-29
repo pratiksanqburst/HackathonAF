@@ -78,7 +78,7 @@ function App() {
       const store = useAppStore.getState()
       
       // Update selected client if search has query id
-      if (page === 'clients' && queryPart) {
+      if (page === 'clients') {
         const params = new URLSearchParams(queryPart)
         const clientId = params.get('id')
         if (clientId) {
@@ -98,10 +98,11 @@ function App() {
               }
             })
           }
-        }
-      } else {
-        if (store.selectedClient !== null) {
-          store.selectClient(null)
+        } else {
+          // Only clear if navigating back to clients list view without ID
+          if (store.selectedClient !== null) {
+            store.selectClient(null)
+          }
         }
       }
       

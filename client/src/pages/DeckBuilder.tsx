@@ -13,7 +13,7 @@ import {
   CustomTextSlide
 } from '../components/deck/SlideTemplates'
 import { exportDeckToPPTX } from '../utils/pptxExport'
-import { ChevronUp, ChevronDown, Trash2, Printer, Download, Upload, UserPlus, Play, Pause, X, Sparkles, Library, GitFork, FileOutput, Layers, Check, Briefcase, TrendingUp, ShieldCheck, List } from 'lucide-react'
+import { ChevronUp, ChevronDown, Trash2, Printer, Download, Upload, UserPlus, Play, Pause, X, Sparkles, Library, GitFork, FileOutput, Layers, Check, Briefcase, TrendingUp, ShieldCheck, List, Search } from 'lucide-react'
 
 interface SlidePreviewProps {
   slide: SlideItem
@@ -204,7 +204,13 @@ const DeckBuilder = () => {
     selectClient,
     importClientsFromCSV,
     setCurrentPage,
+    fetchClients,
   } = useAppStore()
+
+  // Load client list on mount
+  useEffect(() => {
+    fetchClients()
+  }, [])
 
   // Make sure we have data loaded for the selected persona
   useEffect(() => {
@@ -218,6 +224,10 @@ const DeckBuilder = () => {
   const [focusAreas, setFocusAreas] = useState<string>('Portfolio performance, asset allocation review, risk assessment')
   const [meetingObjective, setMeetingObjective] = useState<string>('Review Q1 performance and discuss Q2 strategy')
   const [additionalNotes, setAdditionalNotes] = useState<string>('')
+  const [templateCategory, setTemplateCategory] = useState<string>('all')
+  const [templateSearch, setTemplateSearch] = useState<string>('')
+  const [libSearch, setLibSearch] = useState<string>('')
+  const [libCategory, setLibCategory] = useState<string>('all')
 
   const loadSteps = [
     'Retrieving client portfolio data...',
@@ -280,13 +290,31 @@ const DeckBuilder = () => {
 
   const handleClientSelect = async (client: import('../store/useAppStore').Client) => {
     selectClient(client)
-    // Update branding with client's name!
+
+    // Apply client brand colors to theme if available
+    const brandColors = client.brandColors
+    const hasBrandColors = brandColors && brandColors.length >= 2
+
+    // Sync ALL client metadata into branding so it flows into every slide and PPTX
     setBranding(prev => ({
       ...prev,
       clientName: client.name,
-      footerText: `Alexander Forbes Engage · Prepared for ${client.name}`,
+      footerText: `Wealth Advisory Engage · Prepared for ${client.name}`,
+      clientLogo: client.logo || null,
+      clientCompany: client.company || '',
+      clientType: client.clientType,
+      clientAge: client.age,
+      brandColors: client.brandColors,
+      // Auto-apply client's brand colors to the presentation theme
+      ...(hasBrandColors ? {
+        primaryColor: brandColors![0],
+        secondaryColor: brandColors![1] || brandColors![0],
+      } : {}),
     }))
-    
+
+    // Refresh portfolio data for the client's persona so slides have live data
+    await fetchDashboardData(client.persona)
+
     if (selectedTemplate === 'Custom Canvas') {
       setDeckBuilderStep('generating')
       resetDeckForTemplate('custom')
@@ -302,7 +330,7 @@ const DeckBuilder = () => {
             metadata: { clientId: client.id, clientName: client.name }
           })
         }).catch(err => console.error(err))
-        
+
         setDeckBuilderStep('workspace')
       }, 4000)
     } else {
@@ -313,15 +341,50 @@ const DeckBuilder = () => {
   const handleGeneratePresentation = () => {
     setDeckBuilderStep('generating')
     
-    // Initialize standard deck
-    resetDeckForTemplate('fixed')
+    const currentTemplateObj = SHARED_PRESET_TEMPLATES.find(t => t.name === selectedTemplate || t.id === selectedTemplate)
     
     setTimeout(() => {
-      // Get current deck from store
-      const currentDeck = useAppStore.getState().deck
+      let finalSlides: SlideItem[] = []
+      
+      if (currentTemplateObj) {
+        // Initialize deck based on the selected template's actual slides!
+        finalSlides = currentTemplateObj.slides.map((s, idx) => ({
+          id: `slide_${Math.random().toString(36).substring(2, 9)}_${idx}`,
+          type: s.type,
+          title: s.title,
+          content: `• ${s.desc}\n• Draft generated from template preset.\n• Review and adjust using AI Slide Refiner.`,
+          notes: `Advisor notes for: ${s.title}`,
+        }))
+
+        // Set the active template theme in localStorage
+        const themeObj = {
+          themeName: currentTemplateObj.themeName,
+          backgroundColor: currentTemplateObj.backgroundColor,
+          textColor: currentTemplateObj.textColor,
+          primaryColor: currentTemplateObj.primaryColor,
+          secondaryColor: currentTemplateObj.secondaryColor || currentTemplateObj.primaryColor,
+          fontFamily: currentTemplateObj.fontFamily
+        }
+        localStorage.setItem('decora_active_template_theme', JSON.stringify(themeObj))
+        
+        // Also apply the theme config color branding
+        setBranding(prev => ({
+          ...prev,
+          themeName: currentTemplateObj.themeName,
+          backgroundColor: currentTemplateObj.backgroundColor,
+          primaryColor: currentTemplateObj.primaryColor,
+          secondaryColor: currentTemplateObj.secondaryColor || currentTemplateObj.primaryColor,
+          textColor: currentTemplateObj.textColor,
+          fontFamily: currentTemplateObj.fontFamily,
+        }))
+      } else {
+        // Fallback to the old fixed template deck creation
+        resetDeckForTemplate('fixed')
+        const currentDeck = useAppStore.getState().deck
+        finalSlides = [...currentDeck]
+      }
       
       // Map/filter deck based on template config values
-      let finalSlides = [...currentDeck]
       
       // 1. Cover slide update
       finalSlides = finalSlides.map(s => {
@@ -392,13 +455,13 @@ const DeckBuilder = () => {
 
   const downloadCsvTemplate = () => {
     const csvContent = "data:text/csv;charset=utf-8,Name,Age,Persona,Portfolio Value,Goal,Sharpe,Volatility\n"
-      + "Pratik Forbes,35,family-planner,320000,750000,1.55,10.4\n"
+      + "Pratik Sen,35,family-planner,320000,750000,1.55,10.4\n"
       + "Sipho Khumalo,58,retirement-client,1250000,1800000,1.15,6.2\n"
       + "Zama Naidoo,26,young-investor,85000,300000,2.05,24.1";
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "af_clients_template.csv");
+    link.setAttribute("download", "advisory_clients_template.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -488,17 +551,26 @@ const DeckBuilder = () => {
       try {
         const themeObj = JSON.parse(savedTemplateTheme)
         localStorage.removeItem('decora_active_template_theme')
+        // If we have a pre-selected client from the store, use it
+        const currentClient = useAppStore.getState().selectedClient
         return {
           themeName: themeObj.themeName,
           backgroundColor: themeObj.backgroundColor,
           textColor: themeObj.textColor,
           primaryColor: themeObj.primaryColor,
           secondaryColor: themeObj.secondaryColor,
-          clientName: 'Margaret Chen',
+          clientName: currentClient?.name || '',
           logoPreset: 'standard',
           logoUrl: '',
-          footerText: `Alexander Forbes Engage · Prepared for Margaret Chen`,
+          footerText: currentClient
+            ? `Wealth Advisory Engage · Prepared for ${currentClient.name}`
+            : 'Wealth Advisory Engage · Confidential',
           fontFamily: themeObj.fontFamily || 'Outfit',
+          clientLogo: currentClient?.logo || null,
+          clientCompany: currentClient?.company || '',
+          clientType: currentClient?.clientType,
+          clientAge: currentClient?.age,
+          brandColors: currentClient?.brandColors,
         }
       } catch (e) {
         console.error('Failed to parse active template theme', e)
@@ -510,7 +582,9 @@ const DeckBuilder = () => {
     const savedBg = localStorage.getItem('decora_bg_color') || '#1e40af'
     const savedText = localStorage.getItem('decora_text_color') || '#ffffff'
     const savedFont = localStorage.getItem('decora_font_family') || 'Outfit'
-    const savedFooter = localStorage.getItem('decora_footer_text') || 'Alexander Forbes Engage · Prepared for Margaret Chen'
+
+    // Check if there's already a selected client in the store
+    const currentClient = useAppStore.getState().selectedClient
 
     return {
       themeName: 'Quarterly Review (Blue)',
@@ -518,25 +592,44 @@ const DeckBuilder = () => {
       textColor: savedText,
       primaryColor: savedPrimary,
       secondaryColor: savedSecondary,
-      clientName: 'Margaret Chen',
+      clientName: currentClient?.name || '',
       logoPreset: 'standard',
       logoUrl: '',
-      footerText: savedFooter,
+      footerText: currentClient
+        ? `Wealth Advisory Engage · Prepared for ${currentClient.name}`
+        : localStorage.getItem('decora_footer_text') || 'Wealth Advisory Engage · Confidential',
       fontFamily: savedFont,
+      clientLogo: currentClient?.logo || null,
+      clientCompany: currentClient?.company || '',
+      clientType: currentClient?.clientType,
+      clientAge: currentClient?.age,
+      brandColors: currentClient?.brandColors,
+      logoFit: 'contain',
     }
   })
 
-  // Sync branding client name whenever the selected client changes (e.g. navigating from Clients page)
+  // Sync branding with ALL client fields whenever the selected client changes (e.g. navigating from Clients page)
   useEffect(() => {
     if (selectedClient) {
-      const savedFooter = localStorage.getItem('decora_footer_text')
-      const finalFooter = savedFooter 
-        ? `${savedFooter} · Prepared for ${selectedClient.name}`
-        : `Alexander Forbes Engage · Prepared for ${selectedClient.name}`
+      // Apply client brand colors to the theme if available
+      const brandColors = selectedClient.brandColors
+      const hasBrandColors = brandColors && brandColors.length >= 2
+
       setBranding(prev => ({
         ...prev,
         clientName: selectedClient.name,
-        footerText: finalFooter,
+        footerText: `Wealth Advisory Engage · Prepared for ${selectedClient.name}`,
+        // Inject all client metadata so cover slide & PPTX are fully personalised
+        clientLogo: selectedClient.logo || null,
+        clientCompany: selectedClient.company || '',
+        clientType: selectedClient.clientType,
+        clientAge: selectedClient.age,
+        brandColors: selectedClient.brandColors,
+        // Auto-apply client brand colors to the presentation theme if available
+        ...(hasBrandColors ? {
+          primaryColor: brandColors![0],
+          secondaryColor: brandColors![1] || brandColors![0],
+        } : {}),
       }))
     }
   }, [selectedClient?.id])
@@ -564,22 +657,7 @@ const DeckBuilder = () => {
     return { model, systemPrompt, temperature }
   }
 
-  // Brand Comparison Mode
-  const [showBrandComparison, setShowBrandComparison] = useState<boolean>(false)
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false)
-
-  const whiteLabelBranding: BrandingConfig = {
-    themeName: 'White Label Corporate',
-    backgroundColor: '#ffffff',
-    textColor: '#1e293b',
-    primaryColor: '#1e3a8a',
-    secondaryColor: '#3b82f6',
-    clientName: branding.clientName,
-    logoPreset: 'premium',
-    logoUrl: '',
-    footerText: `Prepared by Your Wealth Adviser · ${branding.clientName} · Confidential`,
-    fontFamily: 'Inter',
-  }
 
   // One-Click Report: rebuild deck + AI commentary + export PPTX
   const handleOneClickReport = async () => {
@@ -923,145 +1001,191 @@ const DeckBuilder = () => {
 
         {deckBuilderStep !== 'workspace' ? (
           <div className="wizard-screen">
-            {deckBuilderStep === 'start' && (
-              <div style={{ animation: 'fadeIn 0.25s ease' }}>
-                {/* Deck Library Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <div>
-                    <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: 0 }}>Deck Library</h1>
-                    <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>8 presentations across all clients</p>
+            {deckBuilderStep === 'start' && (() => {
+              const filteredLib = SHARED_PRESET_TEMPLATES.filter(t => {
+                const matchSearch = t.name.toLowerCase().includes(libSearch.toLowerCase()) ||
+                  t.description.toLowerCase().includes(libSearch.toLowerCase())
+                const matchCat = libCategory === 'all' || t.category === libCategory
+                return matchSearch && matchCat
+              })
+
+              return (
+                <div style={{ animation: 'fadeIn 0.25s ease' }}>
+                  {/* Deck Library Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <div>
+                      <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: 0 }}>Deck Library</h1>
+                      <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>
+                        {SHARED_PRESET_TEMPLATES.length} presentation templates · Choose one to launch
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        selectClient(null)
+                        setDeckBuilderStep('creation-mode')
+                      }}
+                      style={{
+                        padding: '10px 18px', background: '#2563EB', color: '#FFFFFF',
+                        border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13.5,
+                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+                    >
+                      + Create New Deck
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      selectClient(null)
-                      setDeckBuilderStep('creation-mode')
-                    }}
-                    style={{
-                      padding: '10px 18px', background: '#2563EB', color: '#FFFFFF',
-                      border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13.5,
-                      display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                      boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
-                  >
-                    + Create New Deck
-                  </button>
-                </div>
 
-                {/* Search + Filter bar */}
-                <div style={{ display: 'flex', gap: 12, marginBottom: 24, alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F1F5F9', padding: '8px 14px', borderRadius: 8, flex: 1, maxWidth: 280 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                    <span style={{ fontSize: 13, color: '#94A3B8' }}>Search decks...</span>
+                  {/* Search + Category filter bar */}
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 28, alignItems: 'center', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '7px 12px', borderRadius: 8, flex: 1, maxWidth: 300 }}>
+                      <Search size={13} color="#94A3B8" />
+                      <input
+                        type="text"
+                        value={libSearch}
+                        onChange={e => setLibSearch(e.target.value)}
+                        placeholder="Search templates..."
+                        style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: '#0F172A', width: '100%', fontFamily: 'inherit' }}
+                      />
+                      {libSearch && (
+                        <button onClick={() => setLibSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex' }}>
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {[
+                        { key: 'all', label: 'All' },
+                        { key: 'performance', label: 'Performance' },
+                        { key: 'planning', label: 'Planning' },
+                        { key: 'risk', label: 'Risk' },
+                        { key: 'strategy', label: 'Strategy' }
+                      ].map(cat => (
+                        <button
+                          key={cat.key}
+                          onClick={() => setLibCategory(cat.key)}
+                          style={{
+                            padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                            background: libCategory === cat.key ? '#2563EB' : 'transparent',
+                            color: libCategory === cat.key ? '#fff' : '#64748B',
+                            fontSize: 12.5, fontWeight: 600, transition: 'all 0.15s',
+                          }}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <button style={{ padding: '8px 14px', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                    Filter by Type
-                  </button>
-                </div>
 
-                {/* Deck Cards Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
-                  {[
-                    { title: 'Q1 2026 Portfolio Review', client: 'Margaret Chen', type: 'Quarterly Review', status: 'Completed', slides: 18, date: 'Jun 9, 2026', color1: '#1e40af', color2: '#3b82f6' },
-                    { title: 'Risk Assessment — Growth Portfolio', client: 'Robert Harrington', type: 'Risk Assessment', status: 'In Review', slides: 12, date: 'Jun 1, 2026', color1: '#065f46', color2: '#10b981' },
-                    { title: 'Retirement Planning Strategy 2026', client: 'Patricia Sullivan', type: 'Retirement Planning', status: 'Draft', slides: 9, date: 'May 22, 2026', color1: '#1e3a5f', color2: '#2563EB' },
-                    { title: 'Investment Recommendations Q2', client: 'James Okonkwo', type: 'Investment', status: 'Completed', slides: 15, date: 'May 18, 2026', color1: '#0c1445', color2: '#1e40af' },
-                    { title: 'Annual Performance Review', client: 'Sarah Kowalski', type: 'Performance', status: 'Completed', slides: 22, date: 'May 9, 2026', color1: '#1e40af', color2: '#60a5fa' },
-                    { title: 'Portfolio Rebalancing Proposal', client: 'David Kim', type: 'Portfolio', status: 'Completed', slides: 14, date: 'May 1, 2026', color1: '#065f46', color2: '#34d399' },
-                    { title: 'Tax Optimization Strategy', client: 'Linda Nakamura', type: 'Tax Planning', status: 'In Review', slides: 11, date: 'Apr 25, 2026', color1: '#1e3a5f', color2: '#3b82f6' },
-                    { title: 'New Client Onboarding Deck', client: 'Thomas Reyes', type: 'Onboarding', status: 'Draft', slides: 8, date: 'Apr 15, 2026', color1: '#0c1445', color2: '#6366f1' },
-                  ].map((deck, i) => {
-                    const statusColors: Record<string, {bg: string, color: string}> = {
-                      'Completed': { bg: '#D1FAE5', color: '#059669' },
-                      'In Review': { bg: '#FEF3C7', color: '#D97706' },
-                      'Draft':     { bg: '#F1F5F9', color: '#64748B' },
-                    }
-                    const sc = statusColors[deck.status]
-                    return (
-                      <div
-                        key={i}
-                        onClick={() => {
-                          const client = clients.find(c => c.name === deck.client)
-                          if (client) {
-                            selectClient(client)
-                          }
-                          const secondaryColor = {
-                            '#3b82f6': '#60a5fa',
-                            '#10b981': '#34d399',
-                            '#2563EB': '#3b82f6',
-                            '#1e40af': '#60a5fa',
-                            '#60a5fa': '#93c5fd',
-                            '#34d399': '#6ee7b7',
-                            '#6366f1': '#a78bfa',
-                          }[deck.color2] || '#ffffff'
+                  {/* Template Cards Grid — same layout as Templates page */}
+                  {filteredLib.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '80px 0', border: '1px dashed #E2E8F0', borderRadius: 16 }}>
+                      <p style={{ color: '#94A3B8', fontSize: 13.5 }}>No templates match your search.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
+                      {filteredLib.map(tmpl => (
+                        <div
+                          key={tmpl.id}
+                          style={{
+                            background: '#FFFFFF', border: '1px solid #E2E8F0',
+                            borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
+                            transition: 'transform 0.2s, box-shadow 0.2s', display: 'flex', flexDirection: 'column'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 12px 32px ${tmpl.color}22` }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+                        >
+                          {/* Top accent strip */}
+                          <div style={{ height: 4, background: `linear-gradient(90deg, ${tmpl.color}, ${tmpl.secondaryColor || tmpl.color}80)` }} />
 
-                          setBranding({
-                            themeName: deck.title + " Theme",
-                            backgroundColor: deck.color1,
-                            textColor: '#ffffff',
-                            primaryColor: deck.color2,
-                            secondaryColor: secondaryColor,
-                            clientName: deck.client,
-                            logoPreset: 'standard',
-                            logoUrl: '',
-                            footerText: `Alexander Forbes Engage · Prepared for ${deck.client}`,
-                            fontFamily: 'Outfit',
-                          })
-                          setSelectedTemplate(deck.type)
-                          resetDeckForTemplate('fixed')
-                          setDeckBuilderStep('generating')
-                          setTimeout(() => {
-                            setDeckBuilderStep('workspace')
-                          }, 4000)
-                        }}
-                        style={{
-                          background: '#FFFFFF', border: '1px solid #E2E8F0',
-                          borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
-                          transition: 'all 0.2s ease', boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                        onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'none' }}
-                      >
-                        {/* Thumbnail Preview */}
-                        <div style={{
-                          height: 130, background: `linear-gradient(135deg, ${deck.color1}, ${deck.color2})`,
-                          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                          padding: '12px 14px', position: 'relative', overflow: 'hidden'
-                        }}>
-                          {/* Slide preview lines */}
-                          <div style={{ position: 'absolute', bottom: 16, left: 14, right: 14 }}>
-                            <div style={{ height: 2, background: 'rgba(255,255,255,0.4)', borderRadius: 2, marginBottom: 6 }} />
-                            <div style={{ height: 2, background: 'rgba(255,255,255,0.25)', borderRadius: 2, width: '70%', marginBottom: 6 }} />
-                            <div style={{ height: 2, background: 'rgba(255,255,255,0.15)', borderRadius: 2, width: '50%' }} />
+                          <div style={{ padding: '20px 22px', flex: 1 }}>
+                            {/* Top row: monogram + badge */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{
+                                  width: 42, height: 42, borderRadius: 10,
+                                  background: `${tmpl.color}12`, border: `1px solid ${tmpl.color}30`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}>
+                                  <span style={{ fontSize: 18, fontWeight: 800, color: tmpl.color, fontFamily: "'Outfit', sans-serif" }}>
+                                    {tmpl.category === 'performance' ? 'Pf' : tmpl.category === 'planning' ? 'Pl' : tmpl.category === 'risk' ? 'Rk' : 'St'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: tmpl.color, marginBottom: 2 }}>{tmpl.category}</div>
+                                  <div style={{ fontSize: 11, color: '#64748B', fontWeight: 500 }}>{tmpl.slidesCount} slides</div>
+                                </div>
+                              </div>
+                              {tmpl.badge && (
+                                <span style={{
+                                  fontSize: 10, fontWeight: 700, color: '#92400E',
+                                  background: '#FEF3C7', border: '1px solid #FDE68A',
+                                  padding: '3px 9px', borderRadius: 20, letterSpacing: '0.02em',
+                                }}>
+                                  {tmpl.badge}
+                                </span>
+                              )}
+                            </div>
+
+                            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: '0 0 7px 0', letterSpacing: '-0.02em' }}>{tmpl.name}</h3>
+                            <p style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.6, margin: '0 0 14px 0' }}>{tmpl.description}</p>
+
+                            {/* Tags */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                              {tmpl.tags.map((tag, i) => (
+                                <span key={i} style={{ fontSize: 10.5, color: '#64748B', background: '#F1F5F9', border: '1px solid #E2E8F0', padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <div style={{ width: 6, height: 6, borderRadius: 1, background: 'rgba(255,255,255,0.6)' }} />
-                            <div style={{ width: 6, height: 6, borderRadius: 1, background: 'rgba(255,255,255,0.4)' }} />
+
+                          {/* Actions footer */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #E2E8F0', padding: '10px 14px', gap: 8 }}>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation()
+                                setSelectedTemplate(tmpl.name)
+                                setDeckBuilderStep('template-selection')
+                              }}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                padding: '8px 0', background: '#F8FAFC', border: '1px solid #E2E8F0',
+                                borderRadius: 8, fontSize: 12.5, fontWeight: 600, color: '#475569', cursor: 'pointer'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
+                              onMouseLeave={e => e.currentTarget.style.background = '#F8FAFC'}
+                            >
+                              View Details
+                            </button>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation()
+                                setSelectedTemplate(tmpl.name)
+                                setDeckBuilderStep('template-config')
+                              }}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                padding: '8px 0', background: tmpl.color, border: 'none',
+                                borderRadius: 8, fontSize: 12.5, fontWeight: 700, color: '#FFFFFF', cursor: 'pointer',
+                                transition: 'opacity 0.15s'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+                              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                            >
+                              Use Template →
+                            </button>
                           </div>
-                          <button style={{ background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: 4, color: '#fff', padding: '2px 6px', fontSize: 10, cursor: 'pointer' }}>···</button>
                         </div>
-                        {/* Card metadata */}
-                        <div style={{ padding: '14px 16px' }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>{deck.title}</div>
-                          <div style={{ fontSize: 12, color: '#64748B', marginBottom: 10 }}>{deck.client}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#EFF6FF', color: '#2563EB', fontWeight: 600 }}>{deck.type}</span>
-                            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: sc.bg, color: sc.color, fontWeight: 600 }}>{deck.status}</span>
-                          </div>
-                          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 10, display: 'flex', gap: 10 }}>
-                            <span>{deck.slides} slides</span>
-                            <span>·</span>
-                            <span>{deck.date}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
+
             
             {deckBuilderStep === 'creation-mode' && (
               <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px', animation: 'fadeIn 0.25s ease' }}>
@@ -1181,99 +1305,155 @@ const DeckBuilder = () => {
               </div>
             )}
 
-            {deckBuilderStep === 'template-selection' && (
-              <div style={{ maxWidth: 860, margin: '0 auto', animation: 'fadeIn 0.25s ease' }}>
-                {/* Back button */}
-                <button
-                  onClick={() => setDeckBuilderStep('creation-mode')}
-                  style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, padding: 0 }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#0F172A'}
-                  onMouseLeave={e => e.currentTarget.style.color = '#64748B'}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-                  Back
-                </button>
+            {deckBuilderStep === 'template-selection' && (() => {
+              const filteredTemplates = SHARED_PRESET_TEMPLATES.filter(t => {
+                const matchSearch = t.name.toLowerCase().includes(templateSearch.toLowerCase()) || 
+                                    t.description.toLowerCase().includes(templateSearch.toLowerCase());
+                const matchCat = templateCategory === 'all' || t.category === templateCategory;
+                return matchSearch && matchCat;
+              });
 
-                <h2 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>Select a Template</h2>
-                <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24 }}>
-                  Choose a presentation structure designed for <strong style={{ color: '#2563EB' }}>financial advisors</strong>
-                </p>
+              return (
+                <div style={{ maxWidth: 860, margin: '0 auto', animation: 'fadeIn 0.25s ease' }}>
+                  {/* Back button */}
+                  <button
+                    onClick={() => setDeckBuilderStep('creation-mode')}
+                    style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, padding: 0 }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#0F172A'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#64748B'}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                    Back
+                  </button>
 
-                {/* Category Tabs */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-                  {['All', 'performance', 'planning', 'risk', 'strategy'].map((cat, idx) => (
-                    <button key={cat} style={{
-                      padding: '6px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
-                      background: idx === 0 ? '#2563EB' : '#F1F5F9',
-                      color: idx === 0 ? '#FFFFFF' : '#64748B'
-                    }}>{cat === 'All' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}</button>
-                  ))}
-                </div>
+                  <h2 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>Select a Template</h2>
+                  <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24 }}>
+                    Choose a presentation structure designed for <strong style={{ color: '#2563EB' }}>financial advisors</strong>
+                  </p>
 
-                {/* Template List from shared source */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-                  {SHARED_PRESET_TEMPLATES.map((tmpl) => (
-                    <div
-                      key={tmpl.id}
-                      onClick={() => { setSelectedTemplate(tmpl.name); setDeckBuilderStep('template-config'); }}
-                      style={{
-                        background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12,
-                        padding: '20px 24px', cursor: 'pointer', transition: 'all 0.18s ease',
-                        display: 'flex', alignItems: 'center', gap: 20
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = tmpl.color; e.currentTarget.style.boxShadow = `0 4px 16px ${tmpl.color}20` }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none' }}
-                    >
-                      {/* Icon */}
-                      <div style={{
-                        width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-                        background: `${tmpl.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20
-                      }}>
-                        {tmpl.icon}
-                      </div>
-
-                      {/* Description */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>{tmpl.name}</span>
-                          {tmpl.badge && (
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#FEF3C7', color: '#D97706' }}>⭐ {tmpl.badge}</span>
-                          )}
-                        </div>
-                        <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 10px 0', lineHeight: 1.5 }}>{tmpl.description}</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Requires:</span>
-                          {tmpl.tags.map(tag => (
-                            <span key={tag} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#F1F5F9', color: '#475569', fontWeight: 500 }}>{tag}</span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Slide count + arrow */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                        <span style={{ fontSize: 12, color: '#94A3B8' }}>{tmpl.slidesCount} slides</span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-                      </div>
+                  {/* Search and Filter bar */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24, background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 12px' }}>
+                      <Search size={14} color="#64748B" />
+                      <input
+                        type="text"
+                        value={templateSearch}
+                        onChange={e => setTemplateSearch(e.target.value)}
+                        placeholder="Search templates..."
+                        style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: '#0F172A', fontFamily: 'inherit' }}
+                      />
+                      {templateSearch && (
+                        <button onClick={() => setTemplateSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex' }}>
+                          <X size={13} />
+                        </button>
+                      )}
                     </div>
-                  ))}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {[
+                        { key: 'all', label: 'All' },
+                        { key: 'performance', label: 'Performance' },
+                        { key: 'planning', label: 'Planning' },
+                        { key: 'risk', label: 'Risk' },
+                        { key: 'strategy', label: 'Strategy' }
+                      ].map((cat) => (
+                        <button
+                          key={cat.key}
+                          onClick={() => setTemplateCategory(cat.key)}
+                          style={{
+                            padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                            background: templateCategory === cat.key ? '#2563EB' : 'transparent',
+                            color: templateCategory === cat.key ? '#ffffff' : '#64748B',
+                            fontSize: 12.5, fontWeight: 600, transition: 'all 0.15s',
+                          }}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Template List from shared source */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                    {filteredTemplates.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '60px 0', border: '1px dashed #E2E8F0', borderRadius: 16 }}>
+                        <p style={{ color: '#94A3B8', fontSize: 13.5 }}>No templates match your search.</p>
+                      </div>
+                    ) : (
+                      filteredTemplates.map((tmpl) => (
+                        <div
+                          key={tmpl.id}
+                          onClick={() => { setSelectedTemplate(tmpl.name); setDeckBuilderStep('template-config'); }}
+                          style={{
+                            background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12,
+                            padding: '20px 24px', cursor: 'pointer', transition: 'all 0.18s ease',
+                            display: 'flex', alignItems: 'center', gap: 20
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = tmpl.color; e.currentTarget.style.boxShadow = `0 4px 16px ${tmpl.color}20` }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none' }}
+                        >
+                          {/* Icon */}
+                          <div style={{
+                            width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                            background: `${tmpl.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20
+                          }}>
+                            {tmpl.icon}
+                          </div>
+
+                          {/* Description */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <span style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>{tmpl.name}</span>
+                              {tmpl.badge && (
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#FEF3C7', color: '#D97706' }}>⭐ {tmpl.badge}</span>
+                              )}
+                            </div>
+                            <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 10px 0', lineHeight: 1.5 }}>{tmpl.description}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Requires:</span>
+                              {tmpl.tags.map(tag => (
+                                <span key={tag} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#F1F5F9', color: '#475569', fontWeight: 500 }}>{tag}</span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Slide count + arrow */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                            <span style={{ fontSize: 12, color: '#94A3B8' }}>{tmpl.slidesCount} slides</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {deckBuilderStep === 'template-config' && (() => {
-              const outlineItems = [
-                { num: '01', name: 'Executive Summary', show: true },
-                { num: '02', name: 'Portfolio Overview', show: true },
-                { num: '03', name: 'Asset Allocation', show: true },
-                { num: '04', name: 'Performance vs Benchmark', show: includeBenchmark },
-                { num: '05', name: 'Top Holdings', show: includeBenchmark },
-                { num: '06', name: 'Risk Metrics', show: true },
-                { num: '07', name: 'Market Commentary', show: includeMarketOutlook },
-                { num: '08', name: 'Key Takeaways', show: true },
-                { num: '09', name: 'Next Steps', show: true },
-                { num: '10', name: 'Performance Charts', show: includeCharts },
-                { num: '11', name: 'Market Outlook', show: includeMarketOutlook }
-              ];
+              const currentTemplateObj = SHARED_PRESET_TEMPLATES.find(t => t.name === selectedTemplate || t.id === selectedTemplate);
+              
+              const outlineItems = currentTemplateObj
+                ? currentTemplateObj.slides.map((s, idx) => {
+                    const num = String(idx + 1).padStart(2, '0');
+                    let show = true;
+                    if (s.type === 'metrics' || s.type === 'montecarlo') show = includeCharts;
+                    if (s.type === 'holdings') show = includeBenchmark;
+                    if (s.type === 'timeline' || s.type === 'risk') show = includeMarketOutlook;
+                    return { num, name: s.title, show };
+                  })
+                : [
+                    { num: '01', name: 'Executive Summary', show: true },
+                    { num: '02', name: 'Portfolio Overview', show: true },
+                    { num: '03', name: 'Asset Allocation', show: true },
+                    { num: '04', name: 'Performance vs Benchmark', show: includeBenchmark },
+                    { num: '05', name: 'Top Holdings', show: includeBenchmark },
+                    { num: '06', name: 'Risk Metrics', show: true },
+                    { num: '07', name: 'Market Commentary', show: includeMarketOutlook },
+                    { num: '08', name: 'Key Takeaways', show: true },
+                    { num: '09', name: 'Next Steps', show: true },
+                    { num: '10', name: 'Performance Charts', show: includeCharts },
+                    { num: '11', name: 'Market Outlook', show: includeMarketOutlook }
+                  ];
               const activeOutline = outlineItems.filter(item => item.show);
 
               return (
@@ -1318,9 +1498,65 @@ const DeckBuilder = () => {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                               <div>
                                 <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Client Name</label>
-                                <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', background: '#F8FAFC', padding: '8px 12px', borderRadius: 6, marginTop: 4 }}>
-                                  {branding.clientName}
-                                </div>
+                                <select
+                                  value={selectedClient?.id || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    const client = clients.find(c => c.id === val)
+                                    if (client) {
+                                      selectClient(client)
+                                      const brandColors = client.brandColors
+                                      const hasBrandColors = brandColors && brandColors.length >= 2
+                                      setBranding(prev => ({
+                                        ...prev,
+                                        clientName: client.name,
+                                        footerText: `Wealth Advisory Engage · Prepared for ${client.name}`,
+                                        clientLogo: client.logo || null,
+                                        clientCompany: client.company || '',
+                                        clientType: client.clientType,
+                                        clientAge: client.age,
+                                        brandColors: client.brandColors,
+                                        ...(hasBrandColors ? {
+                                          primaryColor: brandColors![0],
+                                          secondaryColor: brandColors![1] || brandColors![0],
+                                        } : {}),
+                                      }))
+                                      fetchDashboardData(client.persona)
+                                    } else {
+                                      selectClient(null)
+                                      setBranding(prev => ({
+                                        ...prev,
+                                        clientName: '',
+                                        footerText: 'Wealth Advisory Engage · Confidential',
+                                        clientLogo: null,
+                                        clientCompany: '',
+                                        clientType: undefined,
+                                        clientAge: undefined,
+                                        brandColors: undefined,
+                                      }))
+                                    }
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    borderRadius: 6,
+                                    border: '1px solid #E2E8F0',
+                                    outline: 'none',
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    color: '#0F172A',
+                                    background: '#F8FAFC',
+                                    marginTop: 4,
+                                    boxSizing: 'border-box',
+                                    cursor: 'pointer',
+                                    height: '38px',
+                                  }}
+                                >
+                                  <option value="">Select a client...</option>
+                                  {clients.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                  ))}
+                                </select>
                               </div>
                               <div>
                                 <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Company / Entity</label>
@@ -1680,24 +1916,7 @@ const DeckBuilder = () => {
               {isBulkDrafting ? 'Generating all...' : 'AI Generate All'}
             </button>
 
-            {/* BRAND COMPARISON TOGGLE */}
-            <button
-              onClick={() => setShowBrandComparison(!showBrandComparison)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: showBrandComparison ? '#F1F5F9' : '#FFFFFF',
-                border: showBrandComparison ? '1px solid #475569' : '1px solid #E2E8F0',
-                color: showBrandComparison ? '#0F172A' : '#475569',
-                fontSize: 12,
-                fontWeight: 600,
-                padding: '8px 16px',
-                borderRadius: 8,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              {showBrandComparison ? 'Exit Comparison' : 'Brand Comparison'}
-            </button>
+
             <button
               onClick={() => {
                 const idx = deck.findIndex((s) => s.id === selectedSlideId)
@@ -1773,7 +1992,7 @@ const DeckBuilder = () => {
             marginTop: 20,
             gap: 20,
             height: 'calc(100vh - 180px)',
-            gridTemplateColumns: showBrandComparison ? '270px 1fr' : '270px 1fr 320px',
+            gridTemplateColumns: '270px 1fr 320px',
             transition: 'grid-template-columns 0.3s ease',
             alignItems: 'stretch',
             overflow: 'hidden'
@@ -1961,25 +2180,7 @@ const DeckBuilder = () => {
               </div>
             )}
 
-            {/* Brand Comparison Mode: side-by-side */}
-            {showBrandComparison ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: 4, padding: '4px 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Default Dark Theme</span>
-                  <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>vs</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 4, padding: '4px 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>White Label Corporate Theme</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div style={{ aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden', border: '2px solid rgba(56,189,248,0.4)', boxShadow: '0 0 20px rgba(56,189,248,0.12)' }}>
-                    {selectedSlide && <SlidePreview slide={selectedSlide} branding={branding} />}
-                  </div>
-                  <div style={{ aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden', border: '2px solid rgba(30,58,138,0.4)', boxShadow: '0 0 20px rgba(30,58,138,0.12)' }}>
-                    {selectedSlide && <SlidePreview slide={selectedSlide} branding={whiteLabelBranding} />}
-                  </div>
-                </div>
-              </div>
-            ) : (
-            /* Single preview with inline editing */
+            {/* Single preview with inline editing */}
             <div 
               style={{
                 width: '100%',
@@ -2171,12 +2372,11 @@ const DeckBuilder = () => {
                 </div>
               )}
             </div>
-            )}
           </div> {/* End Column 2 */}
 
           {/* COLUMN 3: Tabbed Sidebar Inspector */}
           <div style={{
-            display: showBrandComparison ? 'none' : 'flex', flexDirection: 'column', gap: 16,
+            display: 'flex', flexDirection: 'column', gap: 16,
             background: '#FFFFFF', border: '1px solid #E2E8F0',
             borderRadius: 12, padding: '20px 24px',
             boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
@@ -2613,7 +2813,7 @@ const DeckBuilder = () => {
                     </div>
                     <textarea
                       rows={2}
-                      placeholder={'e.g. "Bold Alexander Forbes red and white, formal serif font for retirement clients"...'}
+                      placeholder={'e.g. "Bold corporate red and white, formal serif font for retirement clients"...'}
                       value={themePrompt}
                       onChange={(e) => setThemePrompt(e.target.value)}
                       style={{
@@ -2776,19 +2976,31 @@ const DeckBuilder = () => {
                     />
                   </div>
 
-                  <div>
-                    <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 6, fontWeight: 700 }}>LOGO PRESET & FONT</label>
+                   <div>
+                    <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 6, fontWeight: 700 }}>LOGO PRESET, FIT & FONT</label>
                     <select
                       value={branding.logoPreset}
                       onChange={(e) => setBranding({ ...branding, logoPreset: e.target.value })}
                       style={{
                         width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
-                        borderRadius: 8, color: '#0F172A', padding: '12px 14px', fontSize: 13, cursor: 'pointer', marginBottom: 12,
+                        borderRadius: 8, color: '#0F172A', padding: '12px 14px', fontSize: 13, cursor: 'pointer', marginBottom: 8,
                       }}
                     >
                       <option value="standard">Standard — Decora</option>
                       <option value="premium">Premium White-Label</option>
                       <option value="custom">Custom Logo URL</option>
+                    </select>
+                    <select
+                      value={branding.logoFit || 'contain'}
+                      onChange={(e) => setBranding({ ...branding, logoFit: e.target.value as any })}
+                      style={{
+                        width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0',
+                        borderRadius: 8, color: '#0F172A', padding: '12px 14px', fontSize: 13, cursor: 'pointer', marginBottom: 8,
+                      }}
+                    >
+                      <option value="contain">Contain (Keep Aspect Ratio)</option>
+                      <option value="cover">Cover (Fill & Crop)</option>
+                      <option value="fill">Stretch (Fit to Frame)</option>
                     </select>
                     <select
                       value={branding.fontFamily || 'Outfit'}

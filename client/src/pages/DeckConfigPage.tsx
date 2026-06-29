@@ -16,7 +16,7 @@ import {
 import { useAppStore, SlideItem } from '../store/useAppStore'
 
 const DeckConfigPage: React.FC = () => {
-  const { setDeck, setSelectedSlideId, setCurrentPage } = useAppStore()
+  const { setDeck, setSelectedSlideId, setCurrentPage, setDeckBuilderStep } = useAppStore()
 
   // Form Fields
   const [title, setTitle] = useState<string>('')
@@ -121,6 +121,7 @@ const DeckConfigPage: React.FC = () => {
         setTimeout(() => {
           setDeck(data.deck)
           setSelectedSlideId(data.deck[0].id)
+          setDeckBuilderStep('workspace')
           setCurrentPage('deck-builder')
           setIsGenerating(false)
         }, 1000)
@@ -346,7 +347,7 @@ const DeckConfigPage: React.FC = () => {
               value={additionalNotes}
               onChange={(e) => setAdditionalNotes(e.target.value)}
               rows={3}
-              placeholder="e.g. Ensure the risk section highlights our life insurance policies. Focus on the Alexander Forbes unit trusts. Do not use complex jargon."
+              placeholder="e.g. Ensure the risk section highlights our life insurance policies. Focus on the client's unit trusts. Do not use complex jargon."
               style={{
                 width: '100%',
                 padding: '10px 12px',
