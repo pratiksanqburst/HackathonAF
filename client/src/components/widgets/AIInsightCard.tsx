@@ -21,8 +21,8 @@ import {
 
 // Helper to generate personalized pitches for the presentation slides
 const getPersonaPitch = (persona: string, portfolio: any, metrics: any, holdings: any) => {
-  const holdingsSummary = holdings && holdings.length > 0 
-    ? holdings.slice(0, 3).map((h: any) => `${h.symbol} (${h.allocation}%)`).join(', ') 
+  const holdingsSummary = holdings && holdings.length > 0
+    ? holdings.slice(0, 3).map((h: any) => `${h.symbol} (${h.allocation}%)`).join(', ')
     : 'equities'
 
   if (persona === 'young-investor') {
@@ -72,7 +72,7 @@ const AIInsightCard = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
   const welcomeMessages: Record<string, string> = {
-    'young-investor': "Hello! I am your AI Strategic Advisor Copilot. I've completed a full audit of the **Young Growth** portfolio. Equities are currently at 85%, primarily weighted in high-beta tech. What market event would you like to stress-test today?",
+    'young-investor': "Hello! I am your AI Strategic Advisor. I've completed a full audit of the **Young Growth** portfolio. Equities are currently at 85%, primarily weighted in high-beta tech. What market event would you like to stress-test today?",
     'family-planner': "Welcome! I've loaded the **Family Planner** balanced portfolio. The target college fund goal is $500K in 10 years. Asset mix is 60/40. Let's run a stress-test or check tactical optimization.",
     'retirement-client': "Greetings, Advisor. The **Retirement Income** portfolio is active. The current allocations focus on preserving wealth and generating a stable 4.1% dividend yield. Let's examine capital preservation under crisis.",
   }
@@ -83,7 +83,7 @@ const AIInsightCard = () => {
       {
         id: 'welcome',
         sender: 'ai',
-        text: welcomeMessages[selectedPersona] ?? "Hello! I am your AI Strategic Advisor Copilot. How can I help you optimize this portfolio today?",
+        text: welcomeMessages[selectedPersona] ?? "Hello! I am your AI Strategic Advisor . How can I help you optimize this portfolio today?",
         timestamp: new Date()
       }
     ])
@@ -136,13 +136,13 @@ const AIInsightCard = () => {
       if (scenario === 'pitch') {
         const pitchText = getPersonaPitch(selectedPersona, portfolioData, metrics, holdings)
         aiText = `**Drafted Presenter Deck Commentary**: \n\n"${pitchText}"\n\nYou can now sync this highly customized commentary directly to the slide presentation deck.`
-        
+
         newAction = {
           label: 'Sync to Presenter Slides',
           onClick: () => {
             updateSpecificSlideContent('insights', 'content', pitchText)
             updateSpecificSlideContent('insights', 'title', `${selectedPersona === 'young-investor' ? 'Young Growth' : selectedPersona === 'family-planner' ? 'Family Planner' : 'Retirement Income'} Strategy Commentary`)
-            
+
             setMessages(prev => {
               const updated = prev.map(m => m.action?.label === 'Sync to Presenter Slides' ? { ...m, action: { ...m.action, completed: true, label: 'Synced ✓' } } : m)
               return [...updated, {
@@ -275,7 +275,7 @@ const AIInsightCard = () => {
           </div>
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9', letterSpacing: '-0.02em', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-              AI Advisor Copilot <Sparkles size={13} color={color} />
+              AI Advisor <Sparkles size={13} color={color} />
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', animation: 'blink 1.5s infinite' }} />
@@ -285,7 +285,7 @@ const AIInsightCard = () => {
         </div>
 
         {stressScenario && (
-          <button 
+          <button
             onClick={() => setStressScenario(null)}
             style={{
               fontSize: 10,
@@ -310,7 +310,7 @@ const AIInsightCard = () => {
       </div>
 
       {/* Chat Messages Frame */}
-      <div 
+      <div
         ref={chatContainerRef}
         style={{
           flex: 1,
@@ -354,8 +354,8 @@ const AIInsightCard = () => {
 
               {/* Bubble Body */}
               <div style={{
-                background: msg.sender === 'user' 
-                  ? `linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)` 
+                background: msg.sender === 'user'
+                  ? `linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)`
                   : 'rgba(30, 41, 59, 0.45)',
                 border: msg.sender === 'user' ? 'none' : '1px solid rgba(255,255,255,0.06)',
                 borderRadius: msg.sender === 'user' ? '16px 4px 16px 16px' : '4px 16px 16px 16px',

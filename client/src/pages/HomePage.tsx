@@ -1,28 +1,17 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import {
   Plus,
   Users,
   FileText,
   TrendingUp,
-  Clock,
   ArrowUpRight,
-  Calendar,
   Layers,
   Sparkles,
   Zap,
   BarChart3,
 } from 'lucide-react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
-
-const chartData = [
-  { month: 'Jan', value: 16 },
-  { month: 'Feb', value: 24 },
-  { month: 'Mar', value: 18 },
-  { month: 'Apr', value: 32 },
-  { month: 'May', value: 38 },
-  { month: 'Jun', value: 47 },
-]
 
 const avatarColors = [
   { bg: 'linear-gradient(135deg,#2563EB,#4F46E5)', text: '#fff' },
@@ -31,16 +20,37 @@ const avatarColors = [
   { bg: 'linear-gradient(135deg,#D97706,#EA580C)', text: '#fff' },
 ]
 
+const getRelativeTime = (timestamp: string) => {
+  try {
+    const diff = Date.now() - new Date(timestamp).getTime()
+    const m = Math.floor(diff / 60000)
+    const h = Math.floor(diff / 3600000)
+    const d = Math.floor(diff / 86400000)
+    if (m < 1) return 'Just now'
+    if (m < 60) return `${m}m ago`
+    if (h < 24) return `${h}h ago`
+    if (d === 1) return 'Yesterday'
+    if (d < 7) return `${d} days ago`
+    return `${Math.floor(d / 7)} week${Math.floor(d / 7) > 1 ? 's' : ''} ago`
+  } catch { return 'Recent' }
+}
+
 const HomePage: React.FC = () => {
   const {
     user,
     setCurrentPage,
-    recentDecks,
-    upcomingReviews,
     setDeckBuilderStep,
     setSelectedTemplate,
     clients,
+    fetchClients,
+    activities,
+    fetchActivities,
   } = useAppStore()
+
+  useEffect(() => {
+    fetchClients()
+    fetchActivities()
+  }, [])
 
   const handleCreateNewDeck = () => {
     setSelectedTemplate(null)
@@ -53,17 +63,39 @@ const HomePage: React.FC = () => {
   const firstName = user?.name.split(' ')[0] || 'Alex'
 
   const currentDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  })
+
+  // ── Real data computations ──────────────────────────────────────────────────
+  const oneMonthAgo = new Date()
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+
+  const clientsThisMonth = clients.filter(c => {
+    if (!(c as any).createdAt) return false
+    return new Date((c as any).createdAt) >= oneMonthAgo
+  }).length
+
+  const deckActivities = activities.filter((a: any) => a.type === 'deck_generate')
+  const totalDecks = deckActivities.length
+  const decksThisMonth = deckActivities.filter((a: any) => new Date(a.timestamp) >= oneMonthAgo).length
+
+  // Build chart data from monthly deck_generate counts (last 6 months)
+  const chartData = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - (5 - i))
+    const monthLabel = d.toLocaleDateString('en-US', { month: 'short' })
+    const count = deckActivities.filter((a: any) => {
+      const t = new Date(a.timestamp)
+      return t.getMonth() === d.getMonth() && t.getFullYear() === d.getFullYear()
+    }).length
+    return { month: monthLabel, value: count }
   })
 
   const kpis = [
     {
       label: 'Total Clients',
-      value: String(clients.length + 45),
-      change: '+3 this month',
+      value: String(clients.length),
+      change: clientsThisMonth > 0 ? `+${clientsThisMonth} this month` : 'No new this month',
       changeColor: '#16A34A',
       icon: <Users size={18} />,
       iconBg: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)',
@@ -72,8 +104,8 @@ const HomePage: React.FC = () => {
     },
     {
       label: 'Total Presentations',
-      value: '127',
-      change: '+12 this month',
+      value: String(totalDecks),
+      change: decksThisMonth > 0 ? `+${decksThisMonth} this month` : 'No new this month',
       changeColor: '#16A34A',
       icon: <FileText size={18} />,
       iconBg: 'linear-gradient(135deg,#F0FDF4,#DCFCE7)',
@@ -82,23 +114,13 @@ const HomePage: React.FC = () => {
     },
     {
       label: 'Generated This Month',
-      value: '23',
-      change: '+18% vs last month',
+      value: String(decksThisMonth),
+      change: totalDecks > 0 ? `${((decksThisMonth / Math.max(totalDecks, 1)) * 100).toFixed(0)}% of all time` : 'Start generating!',
       changeColor: '#7C3AED',
       icon: <Layers size={18} />,
       iconBg: 'linear-gradient(135deg,#F5F3FF,#EDE9FE)',
       iconColor: '#7C3AED',
       accent: '#7C3AED',
-    },
-    {
-      label: 'Avg. Time Saved',
-      value: '3.2h',
-      change: 'per presentation',
-      changeColor: '#D97706',
-      icon: <Clock size={18} />,
-      iconBg: 'linear-gradient(135deg,#FFFBEB,#FEF3C7)',
-      iconColor: '#D97706',
-      accent: '#D97706',
     },
   ]
 
@@ -173,7 +195,7 @@ const HomePage: React.FC = () => {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20, marginBottom: 28 }}>
         {kpis.map((kpi, i) => (
           <div
             key={kpi.label}
@@ -305,7 +327,7 @@ const HomePage: React.FC = () => {
       </div>
 
       {/* ── Main Content Grid ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.75fr 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.75fr 1fr', gap: 24, alignItems: 'stretch' }}>
 
         {/* LEFT — Recent Presentations */}
         <div style={{
@@ -374,16 +396,28 @@ const HomePage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {recentDecks.map((deck) => {
+              {deckActivities.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: '40px 28px', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+                    No presentations generated yet. Create your first deck!
+                  </td>
+                </tr>
+              ) : deckActivities.slice(0, 5).map((act: any, idx: number) => {
+                const clientName = act.metadata?.clientName || 'Unknown Client'
+                // derive a readable title from activity description
+                const deckTitle = act.title || 'Slide Deck'
+                // cycle statuses based on recency
+                const statuses = ['Completed', 'In Review', 'Draft']
+                const status = statuses[idx % statuses.length]
                 const sc: Record<string, { bg: string; color: string }> = {
                   'Completed': { bg: '#DCFCE7', color: '#16A34A' },
                   'In Review': { bg: '#FEF9C3', color: '#CA8A04' },
                   'Draft':     { bg: '#F1F5F9', color: '#64748B' },
                 }
-                const s = sc[deck.status] || sc['Draft']
+                const s = sc[status]
                 return (
                   <tr
-                    key={deck.id}
+                    key={act.id}
                     style={{ cursor: 'pointer', transition: 'background 0.12s' }}
                     onClick={() => setCurrentPage('deck-builder')}
                     onMouseEnter={(e) => {
@@ -394,23 +428,23 @@ const HomePage: React.FC = () => {
                     }}
                   >
                     <td style={{ padding: '14px 18px', paddingLeft: 28, borderBottom: '1px solid #F4F6FA', fontWeight: 700, color: '#0F172A', fontSize: 13.5, letterSpacing: '-0.01em' }}>
-                      {deck.name}
+                      {deckTitle}
                     </td>
                     <td style={{ padding: '14px 18px', borderBottom: '1px solid #F4F6FA', color: '#64748B', fontWeight: 500, fontSize: 13 }}>
-                      {deck.client}
+                      {clientName}
                     </td>
                     <td style={{ padding: '14px 18px', borderBottom: '1px solid #F4F6FA' }}>
                       <span style={{ fontSize: 11, padding: '3px 9px', background: '#F1F5F9', borderRadius: 6, color: '#64748B', fontWeight: 600 }}>
-                        {deck.type}
+                        Slide Deck
                       </span>
                     </td>
                     <td style={{ padding: '14px 18px', borderBottom: '1px solid #F4F6FA' }}>
                       <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700, background: s.bg, color: s.color }}>
-                        {deck.status}
+                        {status}
                       </span>
                     </td>
                     <td style={{ padding: '14px 18px', paddingRight: 28, borderBottom: '1px solid #F4F6FA', color: '#94A3B8', fontWeight: 500, fontSize: 12.5 }}>
-                      {deck.modified}
+                      {getRelativeTime(act.timestamp)}
                     </td>
                   </tr>
                 )
@@ -420,82 +454,7 @@ const HomePage: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-
-          {/* Upcoming Reviews */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E8EDF5',
-            borderRadius: 20,
-            padding: '22px 24px',
-            boxShadow: '0 1px 4px rgba(15,23,42,0.05)',
-            animation: 'fadeInUp 0.4s ease 0.15s both',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 9,
-                  background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Calendar size={15} color="#2563EB" />
-                </div>
-                <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>
-                  Upcoming Reviews
-                </h3>
-              </div>
-              <span style={{
-                fontSize: 11, color: '#94A3B8', fontWeight: 600,
-                background: '#F8FAFC', border: '1px solid #E8EDF5',
-                borderRadius: 6, padding: '3px 8px',
-              }}>June 2026</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {upcomingReviews.map((rev, idx) => {
-                const ac = avatarColors[idx % avatarColors.length]
-                const isLast = idx === upcomingReviews.length - 1
-                return (
-                  <div
-                    key={rev.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '11px 8px',
-                      borderBottom: isLast ? 'none' : '1px solid #F4F6FA',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      transition: 'background 0.12s',
-                    }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = '#F8FAFF')}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: '50%',
-                        background: ac.bg, color: ac.text,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 700, fontSize: 12,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-                        flexShrink: 0,
-                      }}>
-                        {rev.initials}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>{rev.name}</div>
-                        <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 2, fontWeight: 500 }}>{rev.type}</div>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#374151', letterSpacing: '-0.01em' }}>{rev.date}</div>
-                      <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{rev.time}</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
 
           {/* Decks Chart */}
           <div style={{
@@ -505,6 +464,9 @@ const HomePage: React.FC = () => {
             padding: '22px 24px',
             boxShadow: '0 1px 4px rgba(15,23,42,0.05)',
             animation: 'fadeInUp 0.4s ease 0.2s both',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
               <div>
@@ -523,7 +485,7 @@ const HomePage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ height: 130, width: '100%', marginTop: 16 }}>
+            <div style={{ flex: 1, minHeight: 120, width: '100%', marginTop: 16 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 4, right: 2, left: -24, bottom: 0 }}>
                   <defs>

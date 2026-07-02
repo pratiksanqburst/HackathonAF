@@ -17,11 +17,7 @@ import { useAppStore } from '../store/useAppStore'
 const SettingsPage: React.FC = () => {
   // Local state for the settings form
   const [activeTab, setActiveTab] = useState<'ai' | 'branding' | 'system'>('ai')
-  const [geminiModel, setGeminiModel] = useState<'flash' | 'pro'>('pro')
-  const [systemPrompt, setSystemPrompt] = useState<string>(
-    'You are Decora AI, an elite wealth advisor presentation expert. Summarize client portfolio metrics with rich commentary focused on risk mitigation, yield optimization, and market scenarios.'
-  )
-  const [temperature, setTemperature] = useState<number>(0.7)
+  const [llmModel, setLlmModel] = useState<'haiku' | 'gpt'>('gpt')
   const [primaryColor, setPrimaryColor] = useState<string>('#3b82f6')
   const [secondaryColor, setSecondaryColor] = useState<string>('#60a5fa')
   const [backgroundColor, setBackgroundColor] = useState<string>('#1e40af')
@@ -36,14 +32,8 @@ const SettingsPage: React.FC = () => {
 
   // Load configuration defaults on mount
   useEffect(() => {
-    const savedModel = localStorage.getItem('decora_gemini_model')
-    if (savedModel) setGeminiModel(savedModel as any)
-
-    const savedPrompt = localStorage.getItem('decora_system_prompt')
-    if (savedPrompt) setSystemPrompt(savedPrompt)
-
-    const savedTemp = localStorage.getItem('decora_temperature')
-    if (savedTemp) setTemperature(Number(savedTemp))
+    const savedModel = localStorage.getItem('decora_llm_model')
+    if (savedModel) setLlmModel(savedModel as any)
 
     const savedPrimary = localStorage.getItem('decora_primary_color')
     if (savedPrimary) setPrimaryColor(savedPrimary)
@@ -64,20 +54,29 @@ const SettingsPage: React.FC = () => {
     if (savedFooter) setFooterText(savedFooter)
   }, [])
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     setIsSaving(true)
     setSaveSuccess(false)
 
     // Save variables in localStorage to persist preferences
-    localStorage.setItem('decora_gemini_model', geminiModel)
-    localStorage.setItem('decora_system_prompt', systemPrompt)
-    localStorage.setItem('decora_temperature', String(temperature))
+    localStorage.setItem('decora_llm_model', llmModel)
     localStorage.setItem('decora_primary_color', primaryColor)
     localStorage.setItem('decora_secondary_color', secondaryColor)
     localStorage.setItem('decora_bg_color', backgroundColor)
     localStorage.setItem('decora_text_color', textColor)
     localStorage.setItem('decora_font_family', fontFamily)
     localStorage.setItem('decora_footer_text', footerText)
+
+    try {
+      const modelString = llmModel === 'gpt' ? 'gpt-4o-mini' : 'claude-3-haiku-20240307'
+      await fetch('/api/settings/llm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: modelString })
+      })
+    } catch (e) {
+      console.error('Failed to update LLM on server', e)
+    }
 
     setTimeout(() => {
       setIsSaving(false)
@@ -234,14 +233,14 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   {[
-                    { id: 'flash', title: 'Gemini 1.5 Flash', desc: 'Optimized for high-speed slide draft generation, re-orchestrations, and lightning-fast tone transformations.' },
-                    { id: 'pro', title: 'Gemini 1.5 Pro', desc: 'Deep reasoning, rich analytics interpretations, and complex portfolio comment structures. Recommended for professional reports.' },
+                    { id: 'haiku', title: 'Claude Haiku', desc: 'Optimized for high-speed slide draft generation, re-orchestrations, and lightning-fast tone transformations.' },
+                    { id: 'gpt', title: 'GPT-4o Mini', desc: 'Deep reasoning, rich analytics interpretations, and complex portfolio comment structures. Recommended for professional reports.' },
                   ].map((model) => {
-                    const isSelected = geminiModel === model.id
+                    const isSelected = llmModel === model.id
                     return (
                       <div
                         key={model.id}
-                        onClick={() => setGeminiModel(model.id as any)}
+                        onClick={() => setLlmModel(model.id as any)}
                         style={{
                           border: isSelected ? '2px solid #2563EB' : '1px solid #E2E8F0',
                           borderRadius: 14,
@@ -262,61 +261,6 @@ const SettingsPage: React.FC = () => {
                       </div>
                     )
                   })}
-                </div>
-              </div>
-
-              {/* System Prompt Input */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ fontSize: 11, color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 8 }}>
-                  System Instructions Prompt Override
-                </label>
-                <textarea
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 12,
-                    padding: '12px 16px',
-                    fontSize: 13,
-                    color: '#0F172A',
-                    fontFamily: 'inherit',
-                    lineHeight: 1.5,
-                    resize: 'vertical',
-                    outline: 'none',
-                  }}
-                  placeholder="Enter custom prompt guidelines..."
-                />
-                <p style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 8, lineHeight: 1.4, fontWeight: 500 }}>
-                  This instruction is prefixed to all Gemini API calls to guide tone, vocabulary, and compliance standards during slideshow drafts.
-                </p>
-              </div>
-
-              {/* Temperature Slider */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <label style={{ fontSize: 11, color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    Agent Creative Temperature
-                  </label>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#2563EB', background: 'rgba(37,99,235,0.08)', padding: '2px 8px', borderRadius: 6 }}>
-                    {temperature}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={temperature}
-                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  style={{ width: '100%', cursor: 'pointer', accentColor: '#2563EB' }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 10, color: '#94A3B8', fontWeight: 500 }}>Strict Compliance (0.0)</span>
-                  <span style={{ fontSize: 10, color: '#94A3B8', fontWeight: 500 }}>Balanced Insight (0.5)</span>
-                  <span style={{ fontSize: 10, color: '#94A3B8', fontWeight: 500 }}>Creative Storytelling (1.0)</span>
                 </div>
               </div>
             </div>

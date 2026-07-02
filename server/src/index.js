@@ -7,9 +7,9 @@ app.use(cors())
 app.use(express.json())
 
 // ─── QBurst LLM Gateway Setup (OpenAI-compatible) ────────────────────────────
-const GATEWAY_URL  = process.env.QBURST_GATEWAY_URL || 'https://llmgateway.qburst.build/v1'
-const GATEWAY_KEY  = process.env.QBURST_API_KEY
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
+const GATEWAY_URL = process.env.QBURST_GATEWAY_URL || 'https://llmgateway.qburst.build/v1'
+const GATEWAY_KEY = process.env.QBURST_API_KEY
+let GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 
 const gatewayEnabled = GATEWAY_KEY && GATEWAY_KEY.length > 10
 
@@ -19,14 +19,15 @@ if (gatewayEnabled) {
   console.log('⚠️  QBURST_API_KEY not set — copilot running in mock mode.')
 }
 
-const SYSTEM_PROMPT = `You are an elite AI financial advisor copilot for "AF Engage". Recommend solutions from three pillars: Retirement Solutions (RA, Living Annuity, Guaranteed Annuity), Investment Management (Unit Trust - Equity/Debt/Hybrid), Insurance & Risk (Life Insurance, Disability Insurance, Income Protection). Match recommendations to client life stage: Early Career (RA + Unit Trust Equity + Income Protection), Mid Career (Unit Trust Hybrid + Life/Disability Insurance), Pre-Retirement (capital consolidation), Retirement (Living Annuity + Guaranteed Annuity). Be premium, professional, and concise — max 4 sentences or 3 bullet points. No markdown headers or bold.`
+let ACTIVE_SYSTEM_PROMPT = `You are an elite AI financial advisor for "AF Engage". Recommend solutions from three pillars: Retirement Solutions (RA, Living Annuity, Guaranteed Annuity), Investment Management (Unit Trust - Equity/Debt/Hybrid), Insurance & Risk (Life Insurance, Disability Insurance, Income Protection). Match recommendations to client life stage: Early Career (RA + Unit Trust Equity + Income Protection), Mid Career (Unit Trust Hybrid + Life/Disability Insurance), Pre-Retirement (capital consolidation), Retirement (Living Annuity + Guaranteed Annuity). Be premium, professional, and concise — max 4 sentences or 3 bullet points. No markdown headers or bold.`
+let ACTIVE_TEMPERATURE = 0.7
 
 async function askGemini(prompt, options = {}) {
   if (!gatewayEnabled) return null
   try {
     const selectedModel = options.model === 'pro' ? 'gemini-2.0-pro' : (options.model === 'flash' ? 'gemini-2.0-flash' : GEMINI_MODEL)
-    const activeSystemPrompt = options.systemPrompt || SYSTEM_PROMPT
-    const activeTemperature = typeof options.temperature === 'number' ? options.temperature : 0.7
+    const activeSystemPrompt = options.systemPrompt || ACTIVE_SYSTEM_PROMPT
+    const activeTemperature = typeof options.temperature === 'number' ? options.temperature : ACTIVE_TEMPERATURE
 
     const response = await fetch(`${GATEWAY_URL}/chat/completions`, {
       method: 'POST',
@@ -40,7 +41,7 @@ async function askGemini(prompt, options = {}) {
         max_tokens: 512,
         messages: [
           { role: 'system', content: activeSystemPrompt },
-          { role: 'user',   content: prompt },
+          { role: 'user', content: prompt },
         ],
       }),
     })
@@ -69,10 +70,10 @@ async function getYF() {
 
 // ─── Fallback data ────────────────────────────────────────────────────────────
 const FALLBACK_INDICES = [
-  { symbol: '^GSPC',  name: 'S&P 500',    price: 5308.13, change: 0.48,  color: '#38bdf8' },
-  { symbol: '^IXIC',  name: 'NASDAQ',     price: 16742.39, change: 0.61, color: '#a78bfa' },
-  { symbol: '^DJI',   name: 'Dow Jones',  price: 38868.04, change: 0.20, color: '#34d399' },
-  { symbol: 'BTC-USD',name: 'Bitcoin',    price: 67412.50, change: 1.84, color: '#fbbf24' },
+  { symbol: '^GSPC', name: 'S&P 500', price: 5308.13, change: 0.48, color: '#38bdf8' },
+  { symbol: '^IXIC', name: 'NASDAQ', price: 16742.39, change: 0.61, color: '#a78bfa' },
+  { symbol: '^DJI', name: 'Dow Jones', price: 38868.04, change: 0.20, color: '#34d399' },
+  { symbol: 'BTC-USD', name: 'Bitcoin', price: 67412.50, change: 1.84, color: '#fbbf24' },
 ]
 
 const FALLBACK_NEWS = [
@@ -85,49 +86,49 @@ const FALLBACK_NEWS = [
 ]
 
 const FALLBACK_SECTORS = [
-  { name: 'Technology',    change: +2.41, color: '#38bdf8' },
-  { name: 'Healthcare',    change: +0.87, color: '#34d399' },
-  { name: 'Financials',    change: +1.12, color: '#a78bfa' },
-  { name: 'Energy',        change: -0.54, color: '#fbbf24' },
+  { name: 'Technology', change: +2.41, color: '#38bdf8' },
+  { name: 'Healthcare', change: +0.87, color: '#34d399' },
+  { name: 'Financials', change: +1.12, color: '#a78bfa' },
+  { name: 'Energy', change: -0.54, color: '#fbbf24' },
   { name: 'Consumer Disc', change: +0.63, color: '#f472b6' },
-  { name: 'Industrials',   change: +0.29, color: '#60a5fa' },
-  { name: 'Real Estate',   change: -0.31, color: '#fb923c' },
-  { name: 'Utilities',     change: +0.18, color: '#4ade80' },
+  { name: 'Industrials', change: +0.29, color: '#60a5fa' },
+  { name: 'Real Estate', change: -0.31, color: '#fb923c' },
+  { name: 'Utilities', change: +0.18, color: '#4ade80' },
 ]
 
 const PORTFOLIO_HOLDINGS = {
   'young-investor': [
-    { symbol: 'NVDA', name: 'NVIDIA Corp',       shares: 25,  avgCost: 420.00 },
-    { symbol: 'META', name: 'Meta Platforms',    shares: 18,  avgCost: 355.00 },
-    { symbol: 'TSLA', name: 'Tesla Inc',         shares: 30,  avgCost: 215.00 },
-    { symbol: 'AMZN', name: 'Amazon.com',        shares: 22,  avgCost: 178.00 },
-    { symbol: 'COIN', name: 'Coinbase Global',   shares: 40,  avgCost: 145.00 },
+    { symbol: 'NVDA', name: 'NVIDIA Corp', shares: 25, avgCost: 420.00 },
+    { symbol: 'META', name: 'Meta Platforms', shares: 18, avgCost: 355.00 },
+    { symbol: 'TSLA', name: 'Tesla Inc', shares: 30, avgCost: 215.00 },
+    { symbol: 'AMZN', name: 'Amazon.com', shares: 22, avgCost: 178.00 },
+    { symbol: 'COIN', name: 'Coinbase Global', shares: 40, avgCost: 145.00 },
   ],
   'family-planner': [
-    { symbol: 'VTI',  name: 'Vanguard Total Mkt ETF', shares: 80,  avgCost: 220.00 },
-    { symbol: 'BND',  name: 'Vanguard Bond ETF',      shares: 120, avgCost: 73.00  },
-    { symbol: 'SCHD', name: 'Schwab Dividend ETF',    shares: 95,  avgCost: 76.00  },
-    { symbol: 'VNQ',  name: 'Vanguard Real Estate',   shares: 50,  avgCost: 88.00  },
-    { symbol: 'AAPL', name: 'Apple Inc',              shares: 35,  avgCost: 165.00 },
+    { symbol: 'VTI', name: 'Vanguard Total Mkt ETF', shares: 80, avgCost: 220.00 },
+    { symbol: 'BND', name: 'Vanguard Bond ETF', shares: 120, avgCost: 73.00 },
+    { symbol: 'SCHD', name: 'Schwab Dividend ETF', shares: 95, avgCost: 76.00 },
+    { symbol: 'VNQ', name: 'Vanguard Real Estate', shares: 50, avgCost: 88.00 },
+    { symbol: 'AAPL', name: 'Apple Inc', shares: 35, avgCost: 165.00 },
   ],
   'retirement-client': [
-    { symbol: 'JNJ',  name: 'Johnson & Johnson', shares: 60,  avgCost: 150.00 },
-    { symbol: 'PG',   name: 'Procter & Gamble',  shares: 55,  avgCost: 142.00 },
-    { symbol: 'KO',   name: 'Coca-Cola Co',      shares: 100, avgCost: 58.00  },
-    { symbol: 'TLT',  name: 'iShares 20Y Bond',  shares: 80,  avgCost: 92.00  },
-    { symbol: 'SCHD', name: 'Schwab Dividend ETF',shares: 150, avgCost: 74.00  },
+    { symbol: 'JNJ', name: 'Johnson & Johnson', shares: 60, avgCost: 150.00 },
+    { symbol: 'PG', name: 'Procter & Gamble', shares: 55, avgCost: 142.00 },
+    { symbol: 'KO', name: 'Coca-Cola Co', shares: 100, avgCost: 58.00 },
+    { symbol: 'TLT', name: 'iShares 20Y Bond', shares: 80, avgCost: 92.00 },
+    { symbol: 'SCHD', name: 'Schwab Dividend ETF', shares: 150, avgCost: 74.00 },
   ],
 }
 
 const PORTFOLIO_METRICS = {
-  'young-investor':    { sharpe: 1.84, alpha: 8.42, beta: 1.62, volatility: 22.4, maxDrawdown: -18.3, ytdReturn: 31.7 },
-  'family-planner':    { sharpe: 1.42, alpha: 3.21, beta: 0.88, volatility: 11.2, maxDrawdown: -8.4,  ytdReturn: 14.3 },
-  'retirement-client': { sharpe: 1.08, alpha: 1.74, beta: 0.54, volatility: 6.8,  maxDrawdown: -4.9,  ytdReturn: 6.2  },
+  'young-investor': { sharpe: 1.84, alpha: 8.42, beta: 1.62, volatility: 22.4, maxDrawdown: -18.3, ytdReturn: 31.7 },
+  'family-planner': { sharpe: 1.42, alpha: 3.21, beta: 0.88, volatility: 11.2, maxDrawdown: -8.4, ytdReturn: 14.3 },
+  'retirement-client': { sharpe: 1.08, alpha: 1.74, beta: 0.54, volatility: 6.8, maxDrawdown: -4.9, ytdReturn: 6.2 },
 }
 
 const PORTFOLIO_GOALS = {
-  'young-investor':    { current: 195000,  goal: 500000  },
-  'family-planner':    { current: 285000,  goal: 600000  },
+  'young-investor': { current: 195000, goal: 500000 },
+  'family-planner': { current: 285000, goal: 600000 },
   'retirement-client': { current: 1140000, goal: 1500000 },
 }
 
@@ -183,6 +184,24 @@ function boxMullerRandom() {
   return mag * Math.sin(2 * Math.PI * v)
 }
 
+// ─── Settings API ────────────────────────────────────────────────────────────
+app.post('/api/settings/llm', (req, res) => {
+  const { model, systemPrompt, temperature } = req.body
+  if (model) {
+    GEMINI_MODEL = model
+    console.log(`[Config] LLM model dynamically updated to: ${GEMINI_MODEL}`)
+  }
+  if (systemPrompt) {
+    ACTIVE_SYSTEM_PROMPT = systemPrompt
+    console.log(`[Config] System prompt updated.`)
+  }
+  if (typeof temperature === 'number') {
+    ACTIVE_TEMPERATURE = temperature
+    console.log(`[Config] Temperature updated to: ${ACTIVE_TEMPERATURE}`)
+  }
+  res.json({ success: true, model: GEMINI_MODEL, temperature: ACTIVE_TEMPERATURE })
+})
+
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
@@ -192,8 +211,8 @@ app.get('/api/market/indices', async (req, res) => {
   try {
     const yahoo = await getYF()
     const symbols = ['^GSPC', '^IXIC', '^DJI', 'BTC-USD']
-    const names   = ['S&P 500', 'NASDAQ', 'Dow Jones', 'Bitcoin']
-    const colors  = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24']
+    const names = ['S&P 500', 'NASDAQ', 'Dow Jones', 'Bitcoin']
+    const colors = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24']
 
     const quotes = await Promise.all(
       symbols.map(s => yahoo.quote(s).catch(() => null))
@@ -201,9 +220,9 @@ app.get('/api/market/indices', async (req, res) => {
 
     const data = quotes.map((q, i) => ({
       symbol: symbols[i],
-      name:   names[i],
-      color:  colors[i],
-      price:  q?.regularMarketPrice   ?? FALLBACK_INDICES[i].price,
+      name: names[i],
+      color: colors[i],
+      price: q?.regularMarketPrice ?? FALLBACK_INDICES[i].price,
       change: q?.regularMarketChangePercent ?? FALLBACK_INDICES[i].change,
     }))
 
@@ -220,7 +239,7 @@ app.get('/api/market/quote/:symbol', async (req, res) => {
     const q = await yahoo.quote(req.params.symbol)
     res.json({
       symbol: q.symbol,
-      price:  q.regularMarketPrice,
+      price: q.regularMarketPrice,
       change: q.regularMarketChange,
       changePct: q.regularMarketChangePercent,
       volume: q.regularMarketVolume,
@@ -237,10 +256,10 @@ app.get('/api/market/news', async (req, res) => {
     const yahoo = await getYF()
     const result = await yahoo.search('stock market', { newsCount: 6, quotesCount: 0 })
     const news = (result.news || []).slice(0, 6).map((n, i) => ({
-      title:    n.title,
-      source:   n.publisher,
-      time:     timeSince(new Date(n.providerPublishTime * 1000)),
-      url:      n.link,
+      title: n.title,
+      source: n.publisher,
+      time: timeSince(new Date(n.providerPublishTime * 1000)),
+      url: n.link,
       category: ['Macro', 'Tech', 'Markets', 'Crypto', 'Global', 'Earnings'][i % 6],
     }))
     res.json(news.length ? news : FALLBACK_NEWS)
@@ -253,14 +272,14 @@ app.get('/api/market/news', async (req, res) => {
 app.get('/api/market/sectors', async (req, res) => {
   try {
     const yahoo = await getYF()
-    const etfs = ['XLK','XLV','XLF','XLE','XLY','XLI','XLRE','XLU']
-    const names = ['Technology','Healthcare','Financials','Energy','Consumer Disc','Industrials','Real Estate','Utilities']
-    const colors = ['#38bdf8','#34d399','#a78bfa','#fbbf24','#f472b6','#60a5fa','#fb923c','#4ade80']
+    const etfs = ['XLK', 'XLV', 'XLF', 'XLE', 'XLY', 'XLI', 'XLRE', 'XLU']
+    const names = ['Technology', 'Healthcare', 'Financials', 'Energy', 'Consumer Disc', 'Industrials', 'Real Estate', 'Utilities']
+    const colors = ['#38bdf8', '#34d399', '#a78bfa', '#fbbf24', '#f472b6', '#60a5fa', '#fb923c', '#4ade80']
     const quotes = await Promise.all(etfs.map(s => yahoo.quote(s).catch(() => null)))
     const data = quotes.map((q, i) => ({
-      name:   names[i],
+      name: names[i],
       change: q?.regularMarketChangePercent ?? FALLBACK_SECTORS[i].change,
-      color:  colors[i],
+      color: colors[i],
     }))
     res.json(data)
   } catch {
@@ -323,17 +342,17 @@ app.get('/api/portfolio/holdings/:persona', async (req, res) => {
       const q = quotes[i]
       const price = q?.regularMarketPrice ?? (h.avgCost * (1 + (Math.random() * 0.4 - 0.1)))
       const value = price * h.shares
-      const cost  = h.avgCost * h.shares
-      const pnl   = ((value - cost) / cost) * 100
+      const cost = h.avgCost * h.shares
+      const pnl = ((value - cost) / cost) * 100
       return {
-        symbol:  h.symbol,
-        name:    h.name,
-        shares:  h.shares,
+        symbol: h.symbol,
+        name: h.name,
+        shares: h.shares,
         avgCost: h.avgCost,
-        price:   +price.toFixed(2),
-        value:   +value.toFixed(2),
-        pnlPct:  +pnl.toFixed(2),
-        change:  q?.regularMarketChangePercent ?? +(Math.random() * 4 - 1.5).toFixed(2),
+        price: +price.toFixed(2),
+        value: +value.toFixed(2),
+        pnlPct: +pnl.toFixed(2),
+        change: q?.regularMarketChangePercent ?? +(Math.random() * 4 - 1.5).toFixed(2),
       }
     })
     res.json(data)
@@ -341,7 +360,7 @@ app.get('/api/portfolio/holdings/:persona', async (req, res) => {
     const data = holdings.map(h => {
       const price = h.avgCost * (1 + (Math.random() * 0.3))
       const value = price * h.shares
-      const cost  = h.avgCost * h.shares
+      const cost = h.avgCost * h.shares
       return {
         symbol: h.symbol, name: h.name, shares: h.shares, avgCost: h.avgCost,
         price: +price.toFixed(2), value: +value.toFixed(2),
@@ -398,12 +417,12 @@ app.get('/api/simulation/montecarlo', (req, res) => {
   const { persona = 'young-investor', years = 10, current, goal, ytdReturn, volatility } = req.query
   const g = PORTFOLIO_GOALS[persona] || PORTFOLIO_GOALS['young-investor']
   const m = PORTFOLIO_METRICS[persona] || PORTFOLIO_METRICS['young-investor']
-  
+
   const targetCurrent = current ? Number(current) : g.current
   const targetGoal = goal ? Number(goal) : g.goal
   const targetVolatility = volatility ? Number(volatility) : m.volatility
   const targetReturn = ytdReturn ? Number(ytdReturn) : m.ytdReturn
-  
+
   const result = runMonteCarlo(targetCurrent, targetGoal, targetReturn * 0.7, targetVolatility, Number(years))
   res.json({ ...result, current: targetCurrent, goal: targetGoal })
 })
@@ -429,14 +448,14 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
   }[persona] || 'a wealth management client'
 
   const slidePrompts = {
-    cover:       `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}. Ground it in our platform's core pillars: Retirement Solutions, Investment Management, and Insurance & Protection. Make it sound premium, professional, and forward-looking.`,
-    metrics:     `Analyze these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Write 3 concise bullet points. Focus on how these metrics align with their life stage, and suggest rebalancing into specific Unit Trusts (Equity, Debt, or Hybrid) depending on their current returns and risk.`,
-    holdings:    `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for their profile (${personaCtx}) and how structuring these holdings inside a Retirement Annuity (RA) or Living Annuity (LA) would optimize tax efficiency.`,
-    risk:        `Write 2-3 bullet points on the risk management strategy for ${client} (${personaCtx}) based on metrics: ${metricsCtx}. Explain how to hedge these risks using Insurance & Risk products (such as Income Protection or Disability Insurance) alongside tactical asset allocation.`,
-    timeline:    `Write 2-3 bullet points on the wealth growth trajectory and compounding strategy for ${client} (${personaCtx}). Reference their long-term timeline and recommend structured contributions to a Retirement Annuity (RA) that transitions to a Living Annuity (LA) in their later years.`,
-    montecarlo:  `Write 2-3 bullet points interpreting Monte Carlo simulation results for ${client} (${personaCtx}). Key metrics: ${metricsCtx}. Explain probability of goal success clearly, and advise if they should increase contributions to their Retirement Annuity (RA) to boost their probability of success.`,
-    insights:    `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}) based on holdings (${holdingsCtx}) and metrics (${metricsCtx}). Focus on actionable next steps across the 3 advisory pillars (Retirement Solutions, Investment Management, Insurance & Protection), such as rebalancing to a Unit Trust - Hybrid fund or covering protection gaps.`,
-    custom:      customPrompt
+    cover: `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}. Ground it in our platform's core pillars: Retirement Solutions, Investment Management, and Insurance & Protection. Make it sound premium, professional, and forward-looking.`,
+    metrics: `Analyze these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Write 3 concise bullet points. Focus on how these metrics align with their life stage, and suggest rebalancing into specific Unit Trusts (Equity, Debt, or Hybrid) depending on their current returns and risk.`,
+    holdings: `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for their profile (${personaCtx}) and how structuring these holdings inside a Retirement Annuity (RA) or Living Annuity (LA) would optimize tax efficiency.`,
+    risk: `Write 2-3 bullet points on the risk management strategy for ${client} (${personaCtx}) based on metrics: ${metricsCtx}. Explain how to hedge these risks using Insurance & Risk products (such as Income Protection or Disability Insurance) alongside tactical asset allocation.`,
+    timeline: `Write 2-3 bullet points on the wealth growth trajectory and compounding strategy for ${client} (${personaCtx}). Reference their long-term timeline and recommend structured contributions to a Retirement Annuity (RA) that transitions to a Living Annuity (LA) in their later years.`,
+    montecarlo: `Write 2-3 bullet points interpreting Monte Carlo simulation results for ${client} (${personaCtx}). Key metrics: ${metricsCtx}. Explain probability of goal success clearly, and advise if they should increase contributions to their Retirement Annuity (RA) to boost their probability of success.`,
+    insights: `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}) based on holdings (${holdingsCtx}) and metrics (${metricsCtx}). Focus on actionable next steps across the 3 advisory pillars (Retirement Solutions, Investment Management, Insurance & Protection), such as rebalancing to a Unit Trust - Hybrid fund or covering protection gaps.`,
+    custom: customPrompt
       ? `Write 3 concise bullet points for a slide based on this user instruction: "${customPrompt}". Tailor it specifically for ${client} (${personaCtx}) and align it with our financial advisory solutions. Holdings: ${holdingsCtx}.`
       : `Write 3 bullet points of general market outlook and investment advice for a wealth management presentation for ${client}, focusing on the importance of active management via premium Unit Trust solutions.`,
   }
@@ -452,17 +471,17 @@ app.post('/api/copilot/generate-commentary', async (req, res) => {
 
   // Mock fallback
   const mockDrafts = {
-    cover:      `AF Engage Investment Strategy Report prepared for ${client}. Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
-    metrics:    metrics
+    cover: `AF Engage Investment Strategy Report prepared for ${client}. Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
+    metrics: metrics
       ? `The portfolio metrics indicate alignment with targeted returns. Recommend optimizing allocations by adding to our Unit Trust - Equity or Unit Trust - Debt funds depending on current yield targets.`
       : `Portfolio risk-adjusted returns demonstrate sustained outperformance over benchmark models.`,
-    holdings:   holdings?.length > 0
+    holdings: holdings?.length > 0
       ? `Key positions represent robust defensive components. Aligning these holdings with a Retirement Annuity (RA) structure yields optimal tax efficiency.`
       : `Current holdings show a well-diversified mix optimised for yield and targeted asset allocation.`,
-    risk:       `Volatility has been systematically hedged. Consider wrapping with an Insurance & Risk product such as Income Protection or Disability Insurance to guard the active income path.`,
-    timeline:   `Compounding projections confirm a steady trajectory towards pre-retirement phases. Wealth transition will leverage a Living Annuity (LA) strategy to sustain drawdowns.`,
+    risk: `Volatility has been systematically hedged. Consider wrapping with an Insurance & Risk product such as Income Protection or Disability Insurance to guard the active income path.`,
+    timeline: `Compounding projections confirm a steady trajectory towards pre-retirement phases. Wealth transition will leverage a Living Annuity (LA) strategy to sustain drawdowns.`,
     montecarlo: `Monte Carlo outcomes yield high probability of target success. Sustained contributions to the client's Retirement Annuity (RA) remain the recommended pathway.`,
-    insights:   `Strategic advice: 1. Optimize tax efficiency via Retirement Annuity (RA) contributions. 2. Address protection gaps with Life Insurance (Death Cover). 3. Allocate to Unit Trust - Hybrid to capture balanced yield.`,
+    insights: `Strategic advice: 1. Optimize tax efficiency via Retirement Annuity (RA) contributions. 2. Address protection gaps with Life Insurance (Death Cover). 3. Allocate to Unit Trust - Hybrid to capture balanced yield.`,
   }
   res.json({ draft: mockDrafts[slideType] || mockDrafts.insights, source: 'mock' })
 })
@@ -488,14 +507,14 @@ app.post('/api/copilot/generate-deck', async (req, res) => {
   }[persona] || 'a wealth management client'
 
   const slidePrompts = {
-    cover:       `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}. Ground it in our platform's core pillars: Retirement Solutions, Investment Management, and Insurance & Protection. Make it sound premium, professional, and forward-looking.`,
-    metrics:     `Analyze these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Write 3 concise bullet points. Focus on how these metrics align with their life stage, and suggest rebalancing into specific Unit Trusts (Equity, Debt, or Hybrid) depending on their current returns and risk.`,
-    holdings:    `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for their profile (${personaCtx}) and how structuring these holdings inside a Retirement Annuity (RA) or Living Annuity (LA) would optimize tax efficiency.`,
-    risk:        `Write 2-3 bullet points on the risk management strategy for ${client} (${personaCtx}) based on metrics: ${metricsCtx}. Explain how to hedge these risks using Insurance & Risk products (such as Income Protection or Disability Insurance) alongside tactical asset allocation.`,
-    timeline:    `Write 2-3 bullet points on the wealth growth trajectory and compounding strategy for ${client} (${personaCtx}). Reference their long-term timeline and recommend structured contributions to a Retirement Annuity (RA) that transitions to a Living Annuity (LA) in their later years.`,
-    montecarlo:  `Write 2-3 bullet points interpreting Monte Carlo simulation results for ${client} (${personaCtx}). Key metrics: ${metricsCtx}. Explain probability of goal success clearly, and advise if they should increase contributions to their Retirement Annuity (RA) to boost their probability of success.`,
-    insights:    `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}) based on holdings (${holdingsCtx}) and metrics (${metricsCtx}). Focus on actionable next steps across the 3 advisory pillars (Retirement Solutions, Investment Management, Insurance & Protection), such as rebalancing to a Unit Trust - Hybrid fund or covering protection gaps.`,
-    custom:      `Write 3 bullet points of general market outlook and investment advice for a wealth management presentation for ${client}, focusing on the importance of active management via premium Unit Trust solutions.`,
+    cover: `Write a compelling 1-sentence executive summary for a wealth strategy presentation cover slide prepared for ${client}. Ground it in our platform's core pillars: Retirement Solutions, Investment Management, and Insurance & Protection. Make it sound premium, professional, and forward-looking.`,
+    metrics: `Analyze these portfolio metrics for ${client} (${personaCtx}): ${metricsCtx}. Write 3 concise bullet points. Focus on how these metrics align with their life stage, and suggest rebalancing into specific Unit Trusts (Equity, Debt, or Hybrid) depending on their current returns and risk.`,
+    holdings: `Write 2-3 concise bullet points on the investment thesis behind these key holdings for ${client}: ${holdingsCtx}. Explain why these positions make sense for their profile (${personaCtx}) and how structuring these holdings inside a Retirement Annuity (RA) or Living Annuity (LA) would optimize tax efficiency.`,
+    risk: `Write 2-3 bullet points on the risk management strategy for ${client} (${personaCtx}) based on metrics: ${metricsCtx}. Explain how to hedge these risks using Insurance & Risk products (such as Income Protection or Disability Insurance) alongside tactical asset allocation.`,
+    timeline: `Write 2-3 bullet points on the wealth growth trajectory and compounding strategy for ${client} (${personaCtx}). Reference their long-term timeline and recommend structured contributions to a Retirement Annuity (RA) that transitions to a Living Annuity (LA) in their later years.`,
+    montecarlo: `Write 2-3 bullet points interpreting Monte Carlo simulation results for ${client} (${personaCtx}). Key metrics: ${metricsCtx}. Explain probability of goal success clearly, and advise if they should increase contributions to their Retirement Annuity (RA) to boost their probability of success.`,
+    insights: `Write 3-4 strategic advisory bullet points for ${client} (${personaCtx}) based on holdings (${holdingsCtx}) and metrics (${metricsCtx}). Focus on actionable next steps across the 3 advisory pillars (Retirement Solutions, Investment Management, Insurance & Protection), such as rebalancing to a Unit Trust - Hybrid fund or covering protection gaps.`,
+    custom: `Write 3 bullet points of general market outlook and investment advice for a wealth management presentation for ${client}, focusing on the importance of active management via premium Unit Trust solutions.`,
   }
 
   try {
@@ -508,18 +527,18 @@ app.post('/api/copilot/generate-deck', async (req, res) => {
 
       // Mock fallback
       const mockDrafts = {
-        cover:      `• AF Engage Investment Strategy Report prepared for ${client}.\n• Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
-        metrics:    metrics
+        cover: `• AF Engage Investment Strategy Report prepared for ${client}.\n• Grounded in our Core pillars: Retirement Solutions, Investment Management, and Insurance & Risk.`,
+        metrics: metrics
           ? `• Portfolio registered a YTD Return of +${metrics.ytdReturn}%.\n• Recommend optimizing yield by allocating to our Unit Trust - Equity or Unit Trust - Debt funds.\n• Volatility is managed at ${metrics.volatility}% with a Sharpe ratio of ${metrics.sharpe}.`
           : `• Portfolio risk-adjusted returns demonstrate sustained outperformance over benchmark models.`,
-        holdings:   holdings?.length > 0
+        holdings: holdings?.length > 0
           ? `• Core growth holdings represent stable performance engines.\n• Wrapping active equity within a Retirement Annuity (RA) structure offers maximum tax efficiency.\n• Holdings align with our client risk guidelines.`
           : `• Current holdings show a well-diversified mix optimised for yield and targeted asset allocation.`,
-        risk:       `• Volatility has been systematically hedged through tactical asset allocation.\n• Suggest wrapping with an Insurance & Risk product such as Income Protection or Disability Insurance to guard client path.\n• Liquid buffers protect principal under correction events.`,
-        timeline:   `• Compounding projections confirm a steady trajectory towards pre-retirement phases.\n• Wealth transition will leverage a Living Annuity (LA) strategy to sustain drawdowns.\n• Projections remain aligned with targeted timeline parameters.`,
+        risk: `• Volatility has been systematically hedged through tactical asset allocation.\n• Suggest wrapping with an Insurance & Risk product such as Income Protection or Disability Insurance to guard client path.\n• Liquid buffers protect principal under correction events.`,
+        timeline: `• Compounding projections confirm a steady trajectory towards pre-retirement phases.\n• Wealth transition will leverage a Living Annuity (LA) strategy to sustain drawdowns.\n• Projections remain aligned with targeted timeline parameters.`,
         montecarlo: `• Monte Carlo simulations indicate a high probability of success for achieving retirement targets.\n• Recommend consistent monthly contributions to the client's Retirement Annuity (RA).\n• Strategy remains robust under standard market stress variations.`,
-        insights:   `• Key recommendation: optimize tax efficiency via Retirement Annuity (RA) contributions.\n• Address protection gaps with Life Insurance (Death Cover) and Income Protection.\n• Allocate to Unit Trust - Hybrid to capture balanced yield.`,
-        custom:     `• Position portfolio to align with retirement solutions (RA/LA)\n• Allocate assets strategically to Unit Trust - Equity and Unit Trust - Hybrid\n• Review coverage under Insurance & Risk Products`,
+        insights: `• Key recommendation: optimize tax efficiency via Retirement Annuity (RA) contributions.\n• Address protection gaps with Life Insurance (Death Cover) and Income Protection.\n• Allocate to Unit Trust - Hybrid to capture balanced yield.`,
+        custom: `• Position portfolio to align with retirement solutions (RA/LA)\n• Allocate assets strategically to Unit Trust - Equity and Unit Trust - Hybrid\n• Review coverage under Insurance & Risk Products`,
       }
       return { id: slide.id, draft: mockDrafts[slide.type] || mockDrafts.custom }
     })
@@ -827,8 +846,8 @@ app.post('/api/copilot/generate-theme', async (req, res) => {
   }
 
   const personaCtx = {
-    'young-investor':    'a young, growth-oriented investor',
-    'family-planner':    'a family-focused, balanced investor',
+    'young-investor': 'a young, growth-oriented investor',
+    'family-planner': 'a family-focused, balanced investor',
     'retirement-client': 'a retirement-stage, capital-preservation client',
   }[persona] || 'a wealth management client'
 
@@ -865,9 +884,9 @@ Respond ONLY with a valid JSON object (no markdown, no explanation) in this exac
 
   // Fallback — AF brand-aligned default
   const fallbackThemes = {
-    'young-investor':    { themeName: 'Equity Growth', backgroundColor: '#030d1a', textColor: '#f1f5f9', primaryColor: '#22d3ee', secondaryColor: '#818cf8', fontFamily: 'Outfit', rationale: 'Cool cyan and indigo reflect ambition and tech-forward growth positioning.' },
-    'family-planner':   { themeName: 'Family Trust', backgroundColor: '#0a1628', textColor: '#f8fafc', primaryColor: '#34d399', secondaryColor: '#6ee7b7', fontFamily: 'Plus Jakarta Sans', rationale: 'Green tones evoke stability, growth, and long-term family security.' },
-    'retirement-client':{ themeName: 'Capital Shield', backgroundColor: '#0f1117', textColor: '#f4f4f5', primaryColor: '#d4af37', secondaryColor: '#b45309', fontFamily: 'Playfair Display', rationale: 'Gold and warm tones convey prestige, preservation, and trusted legacy.' },
+    'young-investor': { themeName: 'Equity Growth', backgroundColor: '#030d1a', textColor: '#f1f5f9', primaryColor: '#22d3ee', secondaryColor: '#818cf8', fontFamily: 'Outfit', rationale: 'Cool cyan and indigo reflect ambition and tech-forward growth positioning.' },
+    'family-planner': { themeName: 'Family Trust', backgroundColor: '#0a1628', textColor: '#f8fafc', primaryColor: '#34d399', secondaryColor: '#6ee7b7', fontFamily: 'Plus Jakarta Sans', rationale: 'Green tones evoke stability, growth, and long-term family security.' },
+    'retirement-client': { themeName: 'Capital Shield', backgroundColor: '#0f1117', textColor: '#f4f4f5', primaryColor: '#d4af37', secondaryColor: '#b45309', fontFamily: 'Playfair Display', rationale: 'Gold and warm tones convey prestige, preservation, and trusted legacy.' },
   }
   const fallback = fallbackThemes[persona] || fallbackThemes['retirement-client']
   res.json({ theme: fallback, source: 'mock' })
@@ -880,13 +899,13 @@ console.log('✅ SQLite database connected —', require('path').join(__dirname,
 
 function logActivity(type, title, description, metadata = {}) {
   return db.insertActivity({
-    id:          `act-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type,
     title,
     description,
-    user_name:   'Alex Reed',
-    timestamp:   new Date().toISOString(),
-    metadata:    JSON.stringify(metadata),
+    user_name: 'Alex Reed',
+    timestamp: new Date().toISOString(),
+    metadata: JSON.stringify(metadata),
   })
 }
 
@@ -905,10 +924,10 @@ const fs = require('fs')
 
 // Ensure upload directories exist
 const UPLOADS_DIR = path.join(__dirname, '../../uploads')
-const LOGOS_DIR   = path.join(UPLOADS_DIR, 'logos')
+const LOGOS_DIR = path.join(UPLOADS_DIR, 'logos')
 const PORTFOLIO_DIR = path.join(UPLOADS_DIR, 'portfolios')
 const DATASHEETS_DIR = path.join(UPLOADS_DIR, 'datasheets')
-;[UPLOADS_DIR, LOGOS_DIR, PORTFOLIO_DIR, DATASHEETS_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }) })
+  ;[UPLOADS_DIR, LOGOS_DIR, PORTFOLIO_DIR, DATASHEETS_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }) })
 
 // Serve uploads as static files
 app.use('/uploads', express.static(UPLOADS_DIR))
@@ -925,7 +944,7 @@ const datasheetStorage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, DATASHEETS_DIR),
   filename: (_, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`)
 })
-const uploadLogo      = multer({ storage: logoStorage,      limits: { fileSize: 5 * 1024 * 1024 } })
+const uploadLogo = multer({ storage: logoStorage, limits: { fileSize: 5 * 1024 * 1024 } })
 const uploadPortfolio = multer({ storage: portfolioStorage, limits: { fileSize: 10 * 1024 * 1024 } })
 const uploadDatasheet = multer({ storage: datasheetStorage, limits: { fileSize: 20 * 1024 * 1024 } })
 
@@ -945,14 +964,15 @@ function parsePortfolioCSV(csvText) {
     const row = {}
     headers.forEach((h, idx) => { row[h] = parts[idx] || '' })
     rows.push({
-      symbol:    row['symbol']    || row['ticker']            || `STOCK${i}`,
-      name:      row['name']      || row['company']           || row['symbol'] || `Asset ${i}`,
-      shares:    parseFloat(row['shares']  || row['quantity'] || '0') || 0,
-      avgCost:   parseFloat(row['avgcost'] || row['avg cost'] || row['cost']   || '0') || 0,
-      value:     parseFloat(row['value']   || row['mkt value']|| '0') || 0,
-      allocation:parseFloat(row['allocation'] || row['weight']|| '0') || 0,
-      pnlPct:    parseFloat(row['pnl%']    || row['pnl']      || row['return'] || '0') || 0,
-      assetClass:row['asset class'] || row['type'] || row['assetclass'] || 'Equity',
+      symbol: row['symbol'] || row['ticker'] || `STOCK${i}`,
+      name: row['name'] || row['company'] || row['symbol'] || `Asset ${i}`,
+      shares: parseFloat(row['shares'] || row['quantity'] || '0') || 0,
+      avgCost: parseFloat(row['avgcost'] || row['avg cost'] || row['cost'] || '0') || 0,
+      value: parseFloat(row['value'] || row['mkt value'] || '0') || 0,
+      allocation: parseFloat(row['allocation'] || row['weight'] || '0') || 0,
+      pnlPct: parseFloat(row['pnl%'] || row['pnl'] || row['return'] || '0') || 0,
+      assetClass: row['asset class'] || row['type'] || row['assetclass'] || 'Equity',
+      year: parseInt(row['year'] || row['purchase year'] || '0', 10) || null,
     })
   }
   return rows
@@ -976,24 +996,24 @@ app.post('/api/clients', (req, res) => {
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' })
 
   const row = {
-    id:                  generateClientId(name),
-    name:                name.trim(),
-    email:               email?.trim() || '',
-    contact:             contact?.trim() || '',
-    address:             address?.trim() || '',
-    company:             company?.trim() || '',
-    age:                 parseInt(age, 10) || 35,
-    persona:             persona || 'family-planner',
-    current:             parseFloat(current) || 0,
-    goal:                parseFloat(goal) || 0,
-    sharpe:              parseFloat(sharpe) || 1.4,
-    volatility:          parseFloat(volatility) || 12.0,
-    logo:                null,
-    portfolio_holdings:  null,
-    created_at:          new Date().toISOString(),
-    client_type:         clientType || 'individual',
-    brand_colors:        '[]',
-    data_sheet:          null,
+    id: generateClientId(name),
+    name: name.trim(),
+    email: email?.trim() || '',
+    contact: contact?.trim() || '',
+    address: address?.trim() || '',
+    company: company?.trim() || '',
+    age: parseInt(age, 10) || 35,
+    persona: persona || 'family-planner',
+    current: parseFloat(current) || 0,
+    goal: parseFloat(goal) || 0,
+    sharpe: parseFloat(sharpe) || 1.4,
+    volatility: parseFloat(volatility) || 12.0,
+    logo: null,
+    portfolio_holdings: null,
+    created_at: new Date().toISOString(),
+    client_type: clientType || 'individual',
+    brand_colors: '[]',
+    data_sheet: null,
   }
   const newClient = db.insertClient(row)
   logActivity('client_create', 'New Client Created', `Client profile created for ${newClient.name}.`, { clientId: newClient.id, clientName: newClient.name })
@@ -1005,7 +1025,7 @@ app.put('/api/clients/:id', (req, res) => {
   const existing = db.getClientById(req.params.id)
   if (!existing) return res.status(404).json({ error: 'Client not found' })
 
-  const allowed = ['name','email','contact','address','company','age','persona','current','goal','sharpe','volatility','clientType']
+  const allowed = ['name', 'email', 'contact', 'address', 'company', 'age', 'persona', 'current', 'goal', 'sharpe', 'volatility', 'clientType']
   const updates = {}
   allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k] })
 
@@ -1037,7 +1057,7 @@ app.delete('/api/clients/:id', (req, res) => {
 app.post('/api/clients/:id/logo', uploadLogo.single('logo'), (req, res) => {
   const existing = db.getClientById(req.params.id)
   if (!existing) return res.status(404).json({ error: 'Client not found' })
-  if (!req.file)  return res.status(400).json({ error: 'No file uploaded' })
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
 
   const logoUrl = `/uploads/logos/${req.file.filename}`
   const updated = db.updateLogo(req.params.id, logoUrl)
@@ -1049,20 +1069,53 @@ app.post('/api/clients/:id/logo', uploadLogo.single('logo'), (req, res) => {
 app.post('/api/clients/:id/portfolio', uploadPortfolio.single('portfolio'), (req, res) => {
   const existing = db.getClientById(req.params.id)
   if (!existing) return res.status(404).json({ error: 'Client not found' })
-  if (!req.file)  return res.status(400).json({ error: 'No file uploaded' })
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
 
   try {
     const csvText = fs.readFileSync(req.file.path, 'utf-8')
     const holdings = parsePortfolioCSV(csvText)
 
-    // Auto-calculate total value from holdings if current is 0
+    // Always recalculate portfolio value, sharpe, and volatility from CSV
     let newCurrent = existing.current
+    let newSharpe = existing.sharpe
+    let newVolatility = existing.volatility
+
     if (holdings.length > 0) {
       const totalValue = holdings.reduce((sum, h) => sum + (h.value || (h.shares * h.avgCost)), 0)
-      if (totalValue > 0 && existing.current === 0) newCurrent = Math.round(totalValue)
+      if (totalValue > 0) {
+        newCurrent = Math.round(totalValue)
+
+        // Calculate YTD performance (weighted PnL%)
+        const weightedPnl = holdings.reduce((sum, h) => {
+          const hVal = h.value || (h.shares * h.avgCost)
+          return sum + ((h.pnlPct || 0) * (hVal / totalValue))
+        }, 0)
+
+        // Estimate Volatility dynamically based on asset classes
+        const weightedVol = holdings.reduce((sum, h) => {
+          const hVal = h.value || (h.shares * h.avgCost)
+          const assetClass = (h.assetClass || '').toLowerCase()
+          const symbol = (h.symbol || '').toLowerCase()
+
+          let vol = 12.0 // default
+          if (assetClass.includes('bond') || assetClass.includes('fixed') || assetClass.includes('cash') || symbol.includes('tlt') || symbol.includes('bnd')) {
+            vol = 6.0
+          } else if (assetClass.includes('alt') || assetClass.includes('real') || assetClass.includes('commodity') || symbol.includes('vnq') || symbol.includes('gld')) {
+            vol = 10.0
+          } else if (assetClass.includes('equity') || assetClass.includes('stock') || symbol.includes('aapl') || symbol.includes('nvda') || symbol.includes('meta') || symbol.includes('tsla') || symbol.includes('amzn') || symbol.includes('coin')) {
+            vol = 22.0
+          }
+          return sum + (vol * (hVal / totalValue))
+        }, 0)
+        newVolatility = parseFloat(weightedVol.toFixed(1))
+
+        // Calculate Sharpe ratio dynamically
+        const calculatedSharpe = (weightedPnl - 3.5) / newVolatility
+        newSharpe = parseFloat(Math.max(0.5, Math.min(2.5, calculatedSharpe)).toFixed(2))
+      }
     }
 
-    const updated = db.updateHoldings(req.params.id, holdings, newCurrent)
+    const updated = db.updateHoldings(req.params.id, holdings, newCurrent, newSharpe, newVolatility)
     logActivity('portfolio_upload', 'Portfolio Sheet Imported', `Custom portfolio CSV holding sheet uploaded for ${updated.name} (${holdings.length} positions).`, { clientId: updated.id, clientName: updated.name })
     res.json({ holdings, client: updated, count: holdings.length })
   } catch (err) {
@@ -1074,7 +1127,7 @@ app.post('/api/clients/:id/portfolio', uploadPortfolio.single('portfolio'), (req
 app.post('/api/clients/:id/datasheet', uploadDatasheet.single('datasheet'), (req, res) => {
   const existing = db.getClientById(req.params.id)
   if (!existing) return res.status(404).json({ error: 'Client not found' })
-  if (!req.file)  return res.status(400).json({ error: 'No file uploaded' })
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
 
   const datasheetUrl = `/uploads/datasheets/${req.file.filename}`
   const updated = db.updateDataSheet(req.params.id, datasheetUrl)
@@ -1085,12 +1138,12 @@ app.post('/api/clients/:id/datasheet', uploadDatasheet.single('datasheet'), (req
 // GET /api/clients/template/portfolio — download sample portfolio CSV template
 app.get('/api/clients/template/portfolio', (req, res) => {
   const csv = [
-    'Symbol,Name,Shares,AvgCost,Value,Allocation,PnL%,Asset Class',
-    'AAPL,Apple Inc,50,165.00,9250.00,18.5,12.1,Equity',
-    'MSFT,Microsoft Corp,30,380.00,12600.00,25.2,10.5,Equity',
-    'BND,Vanguard Bond ETF,200,73.00,15800.00,31.6,3.8,Fixed Income',
-    'VNQ,Vanguard Real Estate ETF,80,88.00,7520.00,15.0,5.6,Real Estate',
-    'GLD,SPDR Gold Shares,40,215.00,9460.00,18.9,8.2,Commodities',
+    'Symbol,Name,Shares,AvgCost,Value,Allocation,PnL%,Asset Class,Year',
+    'AAPL,Apple Inc,50,165.00,9250.00,18.5,12.1,Equity,2021',
+    'MSFT,Microsoft Corp,30,380.00,12600.00,25.2,10.5,Equity,2020',
+    'BND,Vanguard Bond ETF,200,73.00,15800.00,31.6,3.8,Fixed Income,2022',
+    'VNQ,Vanguard Real Estate ETF,80,88.00,7520.00,15.0,5.6,Real Estate,2023',
+    'GLD,SPDR Gold Shares,40,215.00,9460.00,18.9,8.2,Commodities,2019',
   ].join('\n')
 
   res.setHeader('Content-Type', 'text/csv')
@@ -1101,13 +1154,12 @@ app.get('/api/clients/template/portfolio', (req, res) => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function timeSince(date) {
   const s = Math.floor((Date.now() - date) / 1000)
-  if (s < 3600)  return `${Math.floor(s / 60)}m ago`
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
   return `${Math.floor(s / 86400)}d ago`
 }
 
 // ─── Static client serving (production Docker build) ─────────────────────────
-const path = require('path')
 if (process.env.NODE_ENV === 'production') {
   const clientBuild = path.join(__dirname, '..', 'public')
   app.use(express.static(clientBuild))

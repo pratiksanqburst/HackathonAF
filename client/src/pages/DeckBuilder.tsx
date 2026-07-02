@@ -2161,24 +2161,7 @@ const DeckBuilder = () => {
           {/* COLUMN 2: Workspace Slide Preview */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1, overflowY: 'auto', paddingRight: 4 }}>
 
-            {/* Live Data Injection Badge */}
-            {metrics && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'rgba(52,211,153,0.06)',
-                border: '1px solid rgba(52,211,153,0.2)',
-                borderRadius: 8, padding: '8px 14px',
-              }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', animation: 'blink 1.5s infinite' }} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#34d399', letterSpacing: '0.04em' }}>LIVE DATA INJECTED</span>
-                <span style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>
-                  YTD: <strong style={{ color: metrics.ytdReturn >= 0 ? '#34d399' : '#f43f5e' }}>{metrics.ytdReturn >= 0 ? '+' : ''}{metrics.ytdReturn.toFixed(1)}%</strong>
-                  &nbsp;·&nbsp; Sharpe: <strong style={{ color: '#38bdf8' }}>{metrics.sharpe.toFixed(2)}</strong>
-                  &nbsp;·&nbsp; MC Goal: <strong style={{ color: '#a78bfa' }}>{monteCarlo?.probability ?? '—'}%</strong>
-                  &nbsp;·&nbsp; {holdings.length} Holdings
-                </span>
-              </div>
-            )}
+
 
             {/* Single preview with inline editing */}
             <div 
@@ -2765,6 +2748,43 @@ const DeckBuilder = () => {
                             onChange={(e) => updateSlideOverride('probability', parseInt(e.target.value) || 0)}
                             style={{ width: '100%', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, color: '#0F172A', padding: '10px 12px', fontSize: 12, boxSizing: 'border-box' }}
                           />
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedSlide.type === 'timeline' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 6, fontWeight: 700 }}>CHART VISUALIZATION TYPE</label>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                            {[
+                              { id: 'area', label: 'Area Chart' },
+                              { id: 'line', label: 'Line Chart' },
+                              { id: 'bar', label: 'Bar Chart' },
+                              { id: 'donut', label: 'Donut Chart' },
+                            ].map((opt) => {
+                              const active = ((selectedSlide as any).overrides?.chartType || 'area') === opt.id;
+                              return (
+                                <button
+                                  key={opt.id}
+                                  onClick={() => updateSlideOverride('chartType', opt.id)}
+                                  style={{
+                                    padding: '8px 10px',
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    border: active ? '1px solid var(--accent)' : '1px solid #E2E8F0',
+                                    background: active ? 'rgba(37,99,235,0.06)' : '#FFFFFF',
+                                    color: active ? 'var(--accent)' : '#475569',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     )}

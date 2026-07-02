@@ -90,6 +90,7 @@ export interface PortfolioHolding {
   allocation: number
   pnlPct: number
   assetClass: string
+  year?: number | null
 }
 
 export interface Client {
@@ -854,8 +855,28 @@ export const useAppStore = create<AppState>((set, get) => ({
             price: h.price || h.avgCost * (1 + (h.pnlPct || 0) / 100),
             value: h.value || (h.shares * (h.price || h.avgCost * (1 + (h.pnlPct || 0) / 100))),
             pnlPct: h.pnlPct || 0,
-            change: h.change || 0
+            change: h.change || 0,
+            year: h.year || null
           }))
+
+          // Calculate wealthData from CSV years
+          const holdingsWithYear = client.portfolioHoldings.filter((h: any) => h.year && h.year > 0)
+          if (holdingsWithYear.length > 0) {
+            const uniqueYears = Array.from(new Set(holdingsWithYear.map((h: any) => h.year))).sort((a: any, b: any) => a - b)
+            const calculatedWealthData = uniqueYears.map((yr: any) => {
+              const valAtYear = client.portfolioHoldings!.reduce((sum, h) => {
+                if (h.year && h.year <= yr) {
+                  return sum + (h.value || (h.shares * h.avgCost))
+                }
+                return sum
+              }, 0)
+              return {
+                year: String(yr),
+                value: Math.round(valAtYear)
+              }
+            })
+            portfolioRes.wealthData = calculatedWealthData
+          }
         }
       }
 

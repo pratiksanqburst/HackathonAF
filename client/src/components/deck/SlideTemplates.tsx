@@ -1,7 +1,7 @@
 import React from 'react'
 import { Persona, PortfolioData, HoldingData, IndexData, NewsData, MetricsData, MonteCarloData } from '../../store/useAppStore'
 import { Zap, TrendingUp, BarChart3, Activity, LineChart, TrendingDown, Brain, Sparkles, Layers } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, LineChart as RechartsLineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from 'recharts'
 
 export interface BrandingConfig {
   themeName: string
@@ -497,53 +497,118 @@ export const RiskSlide: React.FC<SlideTemplateProps> = ({ branding, personaData,
 }
 
 // 5. Wealth Timeline Slide
-export const TimelineSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent }) => {
+export const TimelineSlide: React.FC<SlideTemplateProps> = ({ branding, personaData, customTitle, customContent, overrides = {} }) => {
   const p = personaData.portfolio
   if (!p) return <SlideShell branding={branding}><div>Loading timeline...</div></SlideShell>
+
+  const chartType = overrides.chartType || 'area' // 'area' | 'line' | 'bar' | 'donut'
+  const customizedHoldings = overrides.holdings || personaData.holdings
+  const donutData = customizedHoldings.map((item: any) => ({
+    name: item.symbol,
+    value: item.value
+  }))
+
+  const COLORS = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#f43f5e', '#818cf8']
 
   return (
     <SlideShell branding={branding} customContent={customContent}>
       <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 12px 0', color: branding.primaryColor }}>
-        {customTitle || 'Historical Wealth Growth'}
+        {customTitle || (chartType === 'donut' ? 'Asset Distribution Breakdown' : 'Historical Wealth Growth')}
       </h2>
       <div style={{ display: 'flex', gap: 20, flex: 1, alignItems: 'center', minHeight: 0 }}>
         {/* Statistics list */}
         <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '10px 14px' }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>INITIAL PORTFOLIO VALUE</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginTop: 2 }}>
-              ${p.wealthData[0]?.value.toLocaleString() || '0'}
+          {chartType === 'donut' ? (
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>TOTAL ASSET VALUE</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: branding.primaryColor, marginTop: 4 }}>
+                ${donutData.reduce((sum: number, d: any) => sum + d.value, 0).toLocaleString()}
+              </div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>Across {donutData.length} holdings</div>
             </div>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>As of {p.wealthData[0]?.year}</div>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '10px 14px' }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>CURRENT PORTFOLIO VALUE</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: branding.primaryColor, marginTop: 2 }}>
-              ${p.current.toLocaleString()}
-            </div>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>As of {p.wealthData[p.wealthData.length - 1]?.year || '2025'}</div>
-          </div>
+          ) : (
+            <>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>INITIAL PORTFOLIO VALUE</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginTop: 2 }}>
+                  ${p.wealthData[0]?.value.toLocaleString() || '0'}
+                </div>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>As of {p.wealthData[0]?.year}</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>CURRENT PORTFOLIO VALUE</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: branding.primaryColor, marginTop: 2 }}>
+                  ${p.current.toLocaleString()}
+                </div>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>As of {p.wealthData[p.wealthData.length - 1]?.year || '2025'}</div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Growth Area Chart */}
+        {/* Dynamic Chart Container */}
         <div style={{ flex: 1.6, height: 170, minHeight: 170 }}>
           <ResponsiveContainer width="100%" height={170}>
-            <AreaChart data={p.wealthData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-              <defs>
-                <linearGradient id="slideTimelineGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={branding.primaryColor} stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor={branding.primaryColor} stopOpacity={0.0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="year" stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} />
-              <YAxis stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} tickFormatter={(v) => `$${(v / 1000)}k`} />
-              <Tooltip 
-                contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10 }}
-                itemStyle={{ color: '#fff' }}
-                formatter={(value: any) => [`$${value.toLocaleString()}`, 'Portfolio Value']}
-              />
-              <Area type="monotone" dataKey="value" stroke={branding.primaryColor} strokeWidth={2} fillOpacity={1} fill="url(#slideTimelineGrad)" />
-            </AreaChart>
+            {chartType === 'donut' ? (
+              <PieChart>
+                <Pie
+                  data={donutData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={45}
+                  outerRadius={65}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {donutData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10 }}
+                  itemStyle={{ color: '#fff' }}
+                />
+              </PieChart>
+            ) : chartType === 'bar' ? (
+              <BarChart data={p.wealthData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <XAxis dataKey="year" stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} />
+                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} tickFormatter={(v) => `$${(v / 1000)}k`} />
+                <Tooltip 
+                  contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10 }}
+                  itemStyle={{ color: '#fff' }}
+                  formatter={(value: any) => [`$${value.toLocaleString()}`, 'Portfolio Value']}
+                />
+                <Bar dataKey="value" fill={branding.primaryColor} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            ) : chartType === 'line' ? (
+              <RechartsLineChart data={p.wealthData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <XAxis dataKey="year" stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} />
+                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} tickFormatter={(v) => `$${(v / 1000)}k`} />
+                <Tooltip 
+                  contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10 }}
+                  itemStyle={{ color: '#fff' }}
+                  formatter={(value: any) => [`$${value.toLocaleString()}`, 'Portfolio Value']}
+                />
+                <Line type="monotone" dataKey="value" stroke={branding.primaryColor} strokeWidth={2.5} dot={{ r: 3 }} />
+              </RechartsLineChart>
+            ) : (
+              <AreaChart data={p.wealthData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="slideTimelineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={branding.primaryColor} stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor={branding.primaryColor} stopOpacity={0.0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="year" stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} />
+                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={9} tickLine={false} tickFormatter={(v) => `$${(v / 1000)}k`} />
+                <Tooltip 
+                  contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10 }}
+                  itemStyle={{ color: '#fff' }}
+                  formatter={(value: any) => [`$${value.toLocaleString()}`, 'Portfolio Value']}
+                />
+                <Area type="monotone" dataKey="value" stroke={branding.primaryColor} strokeWidth={2} fillOpacity={1} fill="url(#slideTimelineGrad)" />
+              </AreaChart>
+            )}
           </ResponsiveContainer>
         </div>
       </div>

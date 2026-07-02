@@ -168,7 +168,7 @@ const stmts = {
   `),
   deleteClient:    db.prepare('DELETE FROM clients WHERE id = ?'),
   updateLogo:      db.prepare('UPDATE clients SET logo = @logo WHERE id = @id'),
-  updateHoldings:  db.prepare('UPDATE clients SET portfolio_holdings = @portfolio_holdings, current = @current WHERE id = @id'),
+  updateHoldings:  db.prepare('UPDATE clients SET portfolio_holdings = @portfolio_holdings, current = @current, sharpe = @sharpe, volatility = @volatility WHERE id = @id'),
   updateBrandColors: db.prepare('UPDATE clients SET brand_colors = @brand_colors WHERE id = @id'),
   updateDataSheet:   db.prepare('UPDATE clients SET data_sheet = @data_sheet WHERE id = @id'),
 
@@ -213,11 +213,13 @@ module.exports = {
     stmts.updateLogo.run({ id, logo: logoUrl })
     return this.getClientById(id)
   },
-  updateHoldings(id, holdings, newCurrent) {
+  updateHoldings(id, holdings, newCurrent, newSharpe, newVolatility) {
     stmts.updateHoldings.run({
       id,
       portfolio_holdings: JSON.stringify(holdings),
       current: newCurrent,
+      sharpe: newSharpe,
+      volatility: newVolatility,
     })
     return this.getClientById(id)
   },

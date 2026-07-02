@@ -12,7 +12,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Building,
   Trash2,
   Loader2,
   Sparkles,
@@ -27,7 +26,6 @@ import {
   FolderOpen,
   Info,
   ArrowLeft,
-  Calendar,
   Settings,
   Edit2,
   Palette
@@ -94,7 +92,7 @@ const ClientsPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Refs
-  const logoInputRef = useRef<HTMLInputElement>(null)
+
   const portfolioInputRef = useRef<HTMLInputElement>(null)
 
   const selectedClient = useAppStore(state => state.selectedClient)
@@ -341,17 +339,35 @@ const ClientsPage: React.FC = () => {
       'retirement-client': 'Conservative'
     }[client.persona] || 'Custom'
 
-    const ytdPerf = {
-      'young-investor': '+31.7%',
-      'family-planner': '+14.3%',
-      'retirement-client': '+6.2%'
-    }[client.persona] || '+12.4%'
-
-    const ytdBenchmark = {
-      'young-investor': '+18.5%',
-      'family-planner': '+8.2%',
-      'retirement-client': '+4.1%'
-    }[client.persona] || '+8.2%'
+    // YTD Performance — value-weighted avg PnL% from CSV holdings when available
+    let ytdPerf: string
+    let ytdBenchmark: string
+    if (client.portfolioHoldings && client.portfolioHoldings.length > 0) {
+      const holdings = client.portfolioHoldings
+      const totalVal = holdings.reduce((sum, h) => sum + (h.value || (h.shares * h.avgCost)), 0)
+      const weightedPnl = totalVal > 0
+        ? holdings.reduce((sum, h) => {
+            const hVal = h.value || (h.shares * h.avgCost)
+            return sum + (h.pnlPct * (hVal / totalVal))
+          }, 0)
+        : holdings.reduce((sum, h) => sum + h.pnlPct, 0) / holdings.length
+      const sign = weightedPnl >= 0 ? '+' : ''
+      ytdPerf = `${sign}${weightedPnl.toFixed(1)}%`
+      // Benchmark is ~60% of YTD (rough index comparison)
+      const bench = weightedPnl * 0.62
+      ytdBenchmark = `${bench >= 0 ? '+' : ''}${bench.toFixed(1)}%`
+    } else {
+      ytdPerf = {
+        'young-investor':   '+31.7%',
+        'family-planner':   '+14.3%',
+        'retirement-client':'+6.2%'
+      }[client.persona] || '+12.4%'
+      ytdBenchmark = {
+        'young-investor':   '+18.5%',
+        'family-planner':   '+8.2%',
+        'retirement-client':'+4.1%'
+      }[client.persona] || '+8.2%'
+    }
 
     return (
       <div style={{ animation: 'fadeIn 0.35s ease', fontFamily: "'Inter', sans-serif", paddingBottom: 56 }}>
@@ -442,9 +458,15 @@ const ClientsPage: React.FC = () => {
           <div className="glass-card" style={{ padding: '18px 22px' }}>
             <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Portfolio Value</span>
             <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginTop: 6 }}>
-              ${client.current.toLocaleString()}
+              ${(
+                client.portfolioHoldings && client.portfolioHoldings.length > 0
+                  ? client.portfolioHoldings.reduce((sum, h) => sum + (h.value || (h.shares * h.avgCost)), 0)
+                  : client.current
+              ).toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </div>
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, marginTop: 2, display: 'block' }}>AUM</span>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, marginTop: 2, display: 'block' }}>
+              {client.portfolioHoldings && client.portfolioHoldings.length > 0 ? 'Calculated from holdings' : 'AUM'}
+            </span>
           </div>
 
           <div className="glass-card" style={{ padding: '18px 22px' }}>
@@ -466,7 +488,7 @@ const ClientsPage: React.FC = () => {
           <div className="glass-card" style={{ padding: '18px 22px' }}>
             <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Holdings</span>
             <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginTop: 6 }}>
-              {client.portfolioHoldings?.length || 10}
+              {client.portfolioHoldings?.length ?? 0}
             </div>
             <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, marginTop: 2, display: 'block' }}>Positions</span>
           </div>
@@ -603,9 +625,11 @@ const ClientsPage: React.FC = () => {
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Branding Settings & Colors</span>
                 </div>
 
-                {/* Logo Section */}
+                {/* Logo Section — label adapts to client type */}
                 <div style={{ marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>Client Corporate Logo</label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+                    {client.clientType === 'organizational' ? 'Company Logo' : 'Client Photo'}
+                  </label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     {client.logo ? (
                       <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -632,12 +656,13 @@ const ClientsPage: React.FC = () => {
                         className="btn-secondary" 
                         style={{ padding: '6px 12px', fontSize: 12, borderRadius: 8 }}
                       >
-                        <Upload size={12} style={{ marginRight: 4 }} /> Upload Logo
+                        <Upload size={12} style={{ marginRight: 4 }} /> {client.clientType === 'organizational' ? 'Upload Logo' : 'Upload Photo'}
                       </button>
                       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>JPEG, PNG up to 5MB</p>
                     </div>
                   </div>
                 </div>
+
 
                 {/* Brand Colors */}
                 <div style={{ marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
@@ -811,28 +836,7 @@ const ClientsPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             
             {/* Quick Upload Managers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div className="glass-card" style={{ padding: 18 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <Building size={13} color="var(--accent)" /> Company Logo Branding
-                </span>
-                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.45 }}>
-                  Overwrites default template branding in slide decks with the client's corporate logo.
-                </p>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  ref={logoInputRef}
-                  style={{ display: 'none' }}
-                  onChange={async e => {
-                    const file = e.target.files?.[0]
-                    if (file) await handleQuickLogoUpload(client.id, file)
-                  }}
-                />
-                <button onClick={() => logoInputRef.current?.click()} className="btn-secondary" style={{ padding: '6px 12px', fontSize: 12, borderRadius: 8 }}>
-                  <Upload size={12} /> Upload Corporate Logo
-                </button>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
 
               <div className="glass-card" style={{ padding: 18 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -1345,18 +1349,64 @@ const ClientsPage: React.FC = () => {
                         </span>
                       </td>
                       <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                        ${client.current.toLocaleString()}
+                        ${(() => {
+                          if (client.portfolioHoldings && client.portfolioHoldings.length > 0) {
+                            const totalVal = client.portfolioHoldings.reduce((sum, h) => sum + (h.value || (h.shares * h.avgCost)), 0)
+                            return Math.round(totalVal);
+                          }
+                          return client.current;
+                        })().toLocaleString()}
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
                         ${client.goal.toLocaleString()}
                       </td>
                       <td>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {client.sharpe} <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>Sharpe</span>
-                        </div>
-                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                          {client.volatility}% Vol
-                        </div>
+                        {(() => {
+                          let displaySharpe = client.sharpe
+                          let displayVolatility = client.volatility
+
+                          if (client.portfolioHoldings && client.portfolioHoldings.length > 0) {
+                            const holdings = client.portfolioHoldings
+                            const totalVal = holdings.reduce((sum, h) => sum + (h.value || (h.shares * h.avgCost)), 0)
+                            if (totalVal > 0) {
+                              const weightedPnl = holdings.reduce((sum, h) => {
+                                const hVal = h.value || (h.shares * h.avgCost)
+                                return sum + ((h.pnlPct || 0) * (hVal / totalVal))
+                              }, 0)
+
+                              const weightedVol = holdings.reduce((sum, h) => {
+                                const hVal = h.value || (h.shares * h.avgCost)
+                                const assetClass = (h.assetClass || '').toLowerCase()
+                                const symbol = (h.symbol || '').toLowerCase()
+
+                                let vol = 12.0
+                                if (assetClass.includes('bond') || assetClass.includes('fixed') || assetClass.includes('cash') || symbol.includes('tlt') || symbol.includes('bnd')) {
+                                  vol = 6.0
+                                } else if (assetClass.includes('alt') || assetClass.includes('real') || assetClass.includes('commodity') || symbol.includes('vnq') || symbol.includes('gld')) {
+                                  vol = 10.0
+                                } else if (assetClass.includes('equity') || assetClass.includes('stock') || symbol.includes('aapl') || symbol.includes('nvda') || symbol.includes('meta') || symbol.includes('tsla') || symbol.includes('amzn') || symbol.includes('coin')) {
+                                  vol = 22.0
+                                }
+                                return sum + (vol * (hVal / totalVal))
+                              }, 0)
+
+                              displayVolatility = parseFloat(weightedVol.toFixed(1))
+                              const calculatedSharpe = (weightedPnl - 3.5) / displayVolatility
+                              displaySharpe = parseFloat(Math.max(0.5, Math.min(2.5, calculatedSharpe)).toFixed(2))
+                            }
+                          }
+
+                          return (
+                            <>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>
+                                {displaySharpe} <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>Sharpe</span>
+                              </div>
+                              <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                {displayVolatility}% Vol
+                              </div>
+                            </>
+                          )
+                        })()}
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>

@@ -180,7 +180,7 @@ cp server/.env.example server/.env
 Open `server/.env` and update the parameters:
 ```env
 QBURST_GATEWAY_URL=https://llmgateway.qburst.build/v1
-QBURST_API_KEY=<your-api-key>
+QBURST_API_KEY=<api-key>
 GEMINI_MODEL=gpt-4o-mini
 ```
 *Note: If `QBURST_API_KEY` is not provided, all AI capabilities (commentary drafts, custom slide builders, Copilot chat, and stress scenario appraisals) will automatically fallback to high-quality mock advisory responses.*

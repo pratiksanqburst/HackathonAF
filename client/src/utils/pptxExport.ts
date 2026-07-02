@@ -548,26 +548,86 @@ export const exportDeckToPPTX = async (
         slide.addText(`$${p.current.toLocaleString()}`, { x: 0.7, y: 4.5, w: 4.1, h: 0.5, fontSize: 20, bold: true, color: primaryColor })
         slide.addText(`As of ${p.wealthData[p.wealthData.length - 1]?.year || '2025'}`, { x: 0.7, y: 5.1, w: 4.1, h: 0.2, fontSize: 8, color: '64748B' })
 
-        // Native Area chart on right
-        const dataChartArea = [
-          {
-            name: "Portfolio Value",
-            labels: p.wealthData.map((row) => row.year),
-            values: p.wealthData.map((row) => row.value),
-          },
-        ]
-        slide.addChart(pptx.ChartType.area, dataChartArea, {
-          x: 5.6,
-          y: 1.8,
-          w: 7.2,
-          h: 4.0,
-          showTitle: false,
-          showLegend: false,
-          valAxisTitle: "Portfolio Value ($)",
-          valAxisLabelFormatCode: "$#,##0",
-          chartColors: [primaryColor],
-          valGridLine: { color: "334155" },
-        })
+        const timelineChartType = (slideItem as any).overrides?.chartType || 'area'
+        const isDonut = timelineChartType === 'donut'
+        const chartColorsList = ["38bdf8", "a78bfa", "34d399", "fbbf24", "f472b6", "f43f5e", "818cf8"]
+
+        if (isDonut) {
+          // Slide Title
+          slide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 0.8, w: 10.0, h: 0.4, fill: { type: 'solid', color: bgColor } }) // clear previous title
+          slide.addText(slideItem.title || 'Asset Distribution Breakdown', {
+            x: 0.5,
+            y: 0.8,
+            w: 10.0,
+            h: 0.4,
+            fontSize: 20,
+            bold: true,
+            color: primaryColor,
+          })
+
+          // Total Assets Value card
+          const totalVal = data.holdings.reduce((sum, r) => sum + r.value, 0)
+          slide.addShape(pptx.ShapeType.roundRect, {
+            x: 0.5,
+            y: 1.8,
+            w: 4.5,
+            h: 1.8,
+            fill: { type: 'solid', color: '1e293b' },
+            line: { color: '334155', width: 1 },
+          })
+          slide.addText('TOTAL ASSET VALUE', { x: 0.7, y: 2.0, w: 4.1, h: 0.2, fontSize: 8, color: '94A3B8' })
+          slide.addText(`$${totalVal.toLocaleString()}`, { x: 0.7, y: 2.3, w: 4.1, h: 0.5, fontSize: 20, bold: true, color: primaryColor })
+          slide.addText(`Across ${data.holdings.length} holdings`, { x: 0.7, y: 2.9, w: 4.1, h: 0.2, fontSize: 8, color: '64748B' })
+
+          const donutData = [
+            {
+              name: "Holdings Allocation",
+              labels: data.holdings.map((row) => row.symbol),
+              values: data.holdings.map((row) => row.value),
+            },
+          ]
+
+          slide.addChart(pptx.ChartType.doughnut, donutData, {
+            x: 5.6,
+            y: 1.8,
+            w: 7.2,
+            h: 4.0,
+            showTitle: false,
+            showLegend: true,
+            legendPos: "b",
+            legendColor: "ffffff",
+            chartColors: chartColorsList,
+          })
+        } else {
+          // Native timeline charts (Area, Line, Bar/Col)
+          const chartDataList = [
+            {
+              name: "Portfolio Value",
+              labels: p.wealthData.map((row) => row.year),
+              values: p.wealthData.map((row) => row.value),
+            },
+          ]
+
+          const pptxChartType = timelineChartType === 'bar' 
+            ? pptx.ChartType.bar // Horizontal or Col. Let's use bar.
+            : timelineChartType === 'line'
+            ? pptx.ChartType.line
+            : pptx.ChartType.area
+
+          slide.addChart(pptxChartType, chartDataList, {
+            x: 5.6,
+            y: 1.8,
+            w: 7.2,
+            h: 4.0,
+            showTitle: false,
+            showLegend: false,
+            valAxisTitle: "Portfolio Value ($)",
+            valAxisLabelFormatCode: "$#,##0",
+            chartColors: [primaryColor],
+            valGridLine: { color: "334155" },
+          })
+        }
+
         addAdvisorNote(slide, slideItem.content, primaryColor, pptx)
         break
       }
